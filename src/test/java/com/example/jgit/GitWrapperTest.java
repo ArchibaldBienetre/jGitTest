@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class GitWrapperTest {
@@ -31,5 +32,20 @@ public class GitWrapperTest {
 
         File expectedHiddenGitDir = new File(_tempDir, ".git");
         assertTrue(expectedHiddenGitDir.exists(), "should create hidden directory");
+    }
+
+    @Test
+    public void test_that_GitWrapper_can_commit_a_file_locally() throws Exception {
+        assertTrue(new File(_tempDir, "blah.txt").createNewFile());
+        String logMessage = getClass().getSimpleName() + ": committing a txt file";
+        GitWrapper sut = new GitWrapper(_tempDir);
+
+        sut.add("*.txt");
+        String sha1 = sut.commit(logMessage);
+
+        assertEquals(sha1, sut.getLastLogSha1());
+        assertEquals(logMessage, sut.getLastLogMessage());
+        assertTrue(sut.getLastLogEntry().contains(sha1));
+        assertTrue(sut.getLastLogEntry().contains(logMessage));
     }
 }
