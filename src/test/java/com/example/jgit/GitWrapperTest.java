@@ -57,7 +57,7 @@ public class GitWrapperTest {
         commitSomething(sut, "blah1");
         String sha1Master = sut.getHeadSha1();
 
-        String sha1CreateBranch = sut.createBranch(TEST_BRANCH);
+        String sha1CreateBranch = sut.createBranchAndCheckout(TEST_BRANCH);
         commitSomething(sut, "blah2");
 
         assertEquals(sha1CreateBranch, sha1Master);
@@ -71,8 +71,7 @@ public class GitWrapperTest {
         GitWrapper sut = new GitWrapper(_tempDir);
         commitSomething(sut);
         String sha1Master = sut.getHeadSha1();
-        sut.createBranch(TEST_BRANCH);
-        sut.checkOutBranch(TEST_BRANCH);
+        sut.createBranchAndCheckout(TEST_BRANCH);
         assertTrue(sut.doesBranchExist(TEST_BRANCH));
 
         String actual = sut.checkoutMasterAndDeleteBranch(TEST_BRANCH);
@@ -80,6 +79,23 @@ public class GitWrapperTest {
         assertFalse(sut.doesBranchExist(TEST_BRANCH));
         assertEquals("refs/heads/" + TEST_BRANCH, actual);
         assertEquals(sha1Master, sut.getHeadSha1());
+    }
+
+    @Test
+    public void test_merge() throws Exception {
+        GitWrapper sut = new GitWrapper(_tempDir);
+        String sha1Master = commitSomething(sut, "blah1");
+        sut.createBranchAndCheckout(TEST_BRANCH);
+        commitSomething(sut, "blah2");
+        assertEquals(TEST_BRANCH, sut.getCurrentBranchName());
+        String sha1Branch = sut.getHeadSha1();
+        assertNotEquals(sha1Master, sha1Branch);
+        sut.checkOutBranch("master");
+
+        String actual = sut.merge(TEST_BRANCH);
+
+        assertNotEquals(actual, sha1Branch);
+        assertNotEquals(actual, sha1Master);
     }
 
     @Test

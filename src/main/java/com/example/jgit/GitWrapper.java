@@ -1,6 +1,8 @@
 package com.example.jgit;
 
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.MergeCommand;
+import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
@@ -82,27 +84,47 @@ public class GitWrapper {
         return logEntry.getShortMessage();
     }
 
+    /**
+     * Encapsulates <a href="https://git-scm.com/docs/git-checkout">git-checkout -b</a>
+     */
+    public String createBranchAndCheckout(String branchName) throws GitAPIException {
+        Ref ref = _git.checkout().setCreateBranch(true).setName(branchName).call();
+        return ObjectId.toString(ref.getObjectId());
+    }
+
+    /**
+     * Encapsulates <a href="https://git-scm.com/docs/git-checkout">git-checkout</a>
+     */
+    public String checkOutBranch(String branchName) throws GitAPIException {
+        Ref ref = _git.checkout().setName(branchName).call();
+        return ObjectId.toString(ref.getObjectId());
+    }
+
+    public String checkoutMasterAndDeleteBranch(String branchName) throws GitAPIException {
+        checkOutBranch("master");
+        return getOnlyElement(_git.branchDelete().setForce(true).setBranchNames(branchName).call());
+    }
+
+    /**
+     * Encapsulates <a href="https://git-scm.com/docs/git-merge">git-merge --no-ff</a>
+     */
+    public String merge(String branchName) throws GitAPIException {
+        Optional<Ref> branchWithMatchingName = findBranchByName(branchName);
+        Ref aCommit = branchWithMatchingName.get();
+        MergeResult mergeResult = _git.merge()
+                .include(aCommit)
+                .setCommit(true) // no dry run
+                .setFastForward(MergeCommand.FastForwardMode.NO_FF) // create a merge commit
+                .call();
+        return ObjectId.toString(mergeResult.getNewHead());
+    }
+
     public String getHeadSha1() throws IOException {
         return ObjectId.toString(_git.getRepository().resolve("HEAD"));
     }
 
     public String getCurrentBranchName() throws IOException {
         return _git.getRepository().getBranch();
-    }
-
-    public String createBranch(String branchName) throws GitAPIException {
-        Ref ref = _git.checkout().setCreateBranch(true).setName(branchName).call();
-        return ObjectId.toString(ref.getObjectId());
-    }
-
-    public String checkOutBranch(String branchName) throws GitAPIException, IOException {
-        _git.checkout().setName(branchName).call();
-        return getHeadSha1();
-    }
-
-    public String checkoutMasterAndDeleteBranch(String branchName) throws GitAPIException {
-        _git.checkout().setName("master").call();
-        return getOnlyElement(_git.branchDelete().setForce(true).setBranchNames(branchName).call());
     }
 
     public boolean doesBranchExist(String branchName) throws GitAPIException {
