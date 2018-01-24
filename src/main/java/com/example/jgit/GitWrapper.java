@@ -40,6 +40,7 @@ public class GitWrapper {
 
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-add">git add</a>
+     * @param filePattern a concrete file name, or "." for all files - <em>jGit's add does not support globs (like, *.java), as of yet</em>
      */
     public void add(String filePattern) throws GitAPIException {
         _git.add().addFilepattern(filePattern).call();

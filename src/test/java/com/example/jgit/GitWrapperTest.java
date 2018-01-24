@@ -9,7 +9,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Optional;
 import java.util.Set;
 
 import static java.util.Collections.singleton;
@@ -57,11 +56,11 @@ public class GitWrapperTest {
     public void test_that_GitWrapper_can_create_branch() throws Exception {
         GitWrapper sut = new GitWrapper(_tempDir);
         assertFalse(sut.doesBranchExist(TEST_BRANCH));
-        commitSomething(sut, "blah1");
+        commitSomething(sut, "blah1.txt");
         String sha1Master = sut.getHeadSha1();
 
         String sha1CreateBranch = sut.createBranchAndCheckout(TEST_BRANCH);
-        commitSomething(sut, "blah2");
+        commitSomething(sut, "blah2.txt");
 
         assertEquals(sha1CreateBranch, sha1Master);
         assertTrue(sut.doesBranchExist(TEST_BRANCH));
@@ -87,9 +86,9 @@ public class GitWrapperTest {
     @Test
     public void test_merge() throws Exception {
         GitWrapper sut = new GitWrapper(_tempDir);
-        String sha1Master = commitSomething(sut, "blah1");
+        String sha1Master = commitSomething(sut, "blah1.txt");
         sut.createBranchAndCheckout(TEST_BRANCH);
-        commitSomething(sut, "blah2");
+        commitSomething(sut, "blah2.txt");
         assertEquals(TEST_BRANCH, sut.getCurrentBranchName());
         String sha1Branch = sut.getHeadSha1();
         assertNotEquals(sha1Master, sha1Branch);
@@ -117,11 +116,11 @@ public class GitWrapperTest {
     @Test
     public void test_clean() throws Exception {
         GitWrapper sut = new GitWrapper(_tempDir);
-        File committedFile = createNewFile("blah1", Optional.of("1234"));
+        File committedFile = createNewFileWithContent("blah1.txt", "1234");
         String logMessage = getClass().getSimpleName() + ": committing a txt file";
         sut.add("blah1.txt");
         sut.commit(logMessage);
-        File unversionedFile = createNewFile("blah2", Optional.of("98765"));
+        File unversionedFile = createNewFileWithContent("blah2.txt", "98765");
         assertTrue(committedFile.exists());
         assertTrue(unversionedFile.exists());
 
@@ -132,31 +131,48 @@ public class GitWrapperTest {
         assertIterableEquals(singleton("blah2.txt"), result);
     }
 
+    @Test
+    public void test_that_add_may_add_whole_directory() throws Exception {
+        GitWrapper sut = new GitWrapper(_tempDir);
+        File file1 = createNewFileWithContent("blah1.txt", "12345");
+        File file2 = createNewFileWithContent("blah2.txt", "123456");
+        File dir = new File(_tempDir, "directory");
+        assertTrue(dir.mkdir());
+        File file3 = new File(dir, "blah3.txt");
+        assertTrue(file3.createNewFile());
+        assertTrue(file1.exists());
+        assertTrue(file2.exists());
+        assertTrue(file3.exists());
+
+        sut.add(".");
+        sut.commit("commit files");
+        sut.clean();
+
+        assertTrue(file1.exists());
+        assertTrue(file2.exists());
+        assertTrue(file3.exists());
+    }
+
     private String commitSomething(GitWrapper sut) throws Exception {
-        return commitSomething(sut, "blah");
+        return commitSomething(sut, "blah.txt");
     }
 
-    private String commitSomething(GitWrapper sut, String fileNamePrefix) throws Exception {
-        return commitSomething(sut, fileNamePrefix, Optional.empty());
-    }
-
-    private String commitSomething(GitWrapper sut, String fileNamePrefix, Optional<String> optionalContent) throws Exception {
-        createNewFile(fileNamePrefix, optionalContent);
+    private String commitSomething(GitWrapper sut, String fileName) throws Exception {
+        createNewFile(fileName);
         String logMessage = getClass().getSimpleName() + ": committing a txt file";
-        sut.add(fileNamePrefix + ".txt");
+        sut.add(fileName);
         return sut.commit(logMessage);
     }
 
-    private File createNewFile(String fileNamePrefix, Optional<String> optionalContent) throws IOException {
-        File file = new File(_tempDir, fileNamePrefix + ".txt");
+    private File createNewFileWithContent(String fileName, String content) throws IOException {
+        File file = createNewFile(fileName);
+        (new FileWriter(file)).write(content);
+        return file;
+    }
+
+    private File createNewFile(String fileName) throws IOException {
+        File file = new File(_tempDir, fileName);
         assertTrue(file.createNewFile());
-        optionalContent.ifPresent(content -> {
-            try {
-                (new FileWriter(file)).write(content);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
         return file;
     }
 }
