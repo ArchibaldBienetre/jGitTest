@@ -1,15 +1,18 @@
 package com.example.jgit;
 
-import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.util.FileUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Optional;
+import java.util.Set;
 
+import static java.util.Collections.singleton;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class GitWrapperTest {
@@ -41,7 +44,7 @@ public class GitWrapperTest {
         String logMessage = getClass().getSimpleName() + ": committing a txt file";
         GitWrapper sut = new GitWrapper(_tempDir);
 
-        sut.add("*.txt");
+        sut.add("blah.txt");
         String sha1 = sut.commit(logMessage);
 
         assertEquals(sha1, sut.getLastLogSha1());
@@ -111,14 +114,49 @@ public class GitWrapperTest {
         assertEquals(masterBranchTipSha1, sha1);
     }
 
-    private String commitSomething(GitWrapper sut) throws IOException, GitAPIException {
+    @Test
+    public void test_clean() throws Exception {
+        GitWrapper sut = new GitWrapper(_tempDir);
+        File committedFile = createNewFile("blah1", Optional.of("1234"));
+        String logMessage = getClass().getSimpleName() + ": committing a txt file";
+        sut.add("blah1.txt");
+        sut.commit(logMessage);
+        File unversionedFile = createNewFile("blah2", Optional.of("98765"));
+        assertTrue(committedFile.exists());
+        assertTrue(unversionedFile.exists());
+
+        Set<String> result = sut.clean();
+
+        assertTrue(committedFile.exists());
+        assertFalse(unversionedFile.exists());
+        assertIterableEquals(singleton("blah2.txt"), result);
+    }
+
+    private String commitSomething(GitWrapper sut) throws Exception {
         return commitSomething(sut, "blah");
     }
 
-    private String commitSomething(GitWrapper sut, String fileNamePrefix) throws IOException, GitAPIException {
-        assertTrue(new File(_tempDir, fileNamePrefix + ".txt").createNewFile());
+    private String commitSomething(GitWrapper sut, String fileNamePrefix) throws Exception {
+        return commitSomething(sut, fileNamePrefix, Optional.empty());
+    }
+
+    private String commitSomething(GitWrapper sut, String fileNamePrefix, Optional<String> optionalContent) throws Exception {
+        createNewFile(fileNamePrefix, optionalContent);
         String logMessage = getClass().getSimpleName() + ": committing a txt file";
-        sut.add("*.txt");
+        sut.add(fileNamePrefix + ".txt");
         return sut.commit(logMessage);
+    }
+
+    private File createNewFile(String fileNamePrefix, Optional<String> optionalContent) throws IOException {
+        File file = new File(_tempDir, fileNamePrefix + ".txt");
+        assertTrue(file.createNewFile());
+        optionalContent.ifPresent(content -> {
+            try {
+                (new FileWriter(file)).write(content);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        return file;
     }
 }

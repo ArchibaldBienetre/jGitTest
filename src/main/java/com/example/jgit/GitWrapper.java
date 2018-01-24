@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static com.google.common.collect.Iterables.getOnlyElement;
 
@@ -38,14 +39,27 @@ public class GitWrapper {
     }
 
     /**
-     * Encapsulates <a href="https://git-scm.com/docs/git-add">git-add</a>
+     * Encapsulates <a href="https://git-scm.com/docs/git-add">git add</a>
      */
     public void add(String filePattern) throws GitAPIException {
         _git.add().addFilepattern(filePattern).call();
     }
 
     /**
-     * Encapsulates <a href="https://git-scm.com/docs/git-commit">git-commit</a>
+     * Encapsulates <a href="https://git-scm.com/docs/git-clean">git clean -dfx</a>
+     *
+     * @return a list of cleaned files
+     */
+    public Set<String> clean() throws GitAPIException {
+        return _git.clean()
+                .setCleanDirectories(true)
+                .setForce(true)
+                .setIgnore(false)
+                .call();
+    }
+
+    /**
+     * Encapsulates <a href="https://git-scm.com/docs/git-commit">git commit -m</a>
      *
      * @return successful commit's SHA-1
      */
@@ -85,7 +99,7 @@ public class GitWrapper {
     }
 
     /**
-     * Encapsulates <a href="https://git-scm.com/docs/git-checkout">git-checkout -b</a>
+     * Encapsulates <a href="https://git-scm.com/docs/git-checkout">git checkout -b</a>
      */
     public String createBranchAndCheckout(String branchName) throws GitAPIException {
         Ref ref = _git.checkout().setCreateBranch(true).setName(branchName).call();
@@ -93,13 +107,17 @@ public class GitWrapper {
     }
 
     /**
-     * Encapsulates <a href="https://git-scm.com/docs/git-checkout">git-checkout</a>
+     * Encapsulates <a href="https://git-scm.com/docs/git-checkout">git checkout</a>
      */
     public String checkOutBranch(String branchName) throws GitAPIException {
         Ref ref = _git.checkout().setName(branchName).call();
         return ObjectId.toString(ref.getObjectId());
     }
 
+    /**
+     * Checks out branch ({@link #checkOutBranch(String)}), and
+     * encapsulates <a href="https://git-scm.com/docs/git-branch">git branch -D</a>
+     */
     public String checkoutMasterAndDeleteBranch(String branchName) throws GitAPIException {
         checkOutBranch("master");
         return getOnlyElement(_git.branchDelete().setForce(true).setBranchNames(branchName).call());
