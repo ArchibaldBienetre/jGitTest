@@ -5,12 +5,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.util.Set;
 
+import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -153,6 +152,62 @@ public class GitWrapperTest {
         assertTrue(file3.exists());
     }
 
+    @Test
+    public void test_resetHard() throws Exception {
+        GitWrapper sut = new GitWrapper(_tempDir);
+        String originalContent = "12345";
+        File file = createNewFileWithContent("blah1.txt", originalContent);
+        sut.add(".");
+        String shaCommit1 = sut.commit("commit files");
+        sut.clean();
+        assertTrue(file.exists());
+        assertFileContent(file, originalContent);
+        String newContent = "overwritten";
+        writeContentToFile(file, newContent);
+        assertFileContent(file, newContent);
+
+        sut.resetHard();
+
+        assertFileContent(file, originalContent);
+        assertEquals(shaCommit1, sut.getHeadSha1());
+        assertIterableEquals(emptySet(), sut.clean());
+    }
+
+    @Test
+    public void test_resetHardToRevisionSha1() throws Exception {
+        GitWrapper sut = new GitWrapper(_tempDir);
+        String content1 = "12345";
+        String fileName = "blah1.txt";
+        File file = createNewFileWithContent(fileName, content1);
+        sut.add(".");
+        String sha1Commit1 = sut.commit("commit files");
+        assertFileContent(file, content1);
+
+        String content2 = "98765";
+        writeContentToFile(file, content2);
+        sut.add(".");
+        sut.commit("commit files 2");
+        assertFileContent(file, content2);
+
+        String uncommittedContent = "uncommitted";
+        String uncommittedFileName = "test.txt";
+        File uncommittedFile = createNewFileWithContent(uncommittedFileName, uncommittedContent);
+        writeContentToFile(uncommittedFile, uncommittedContent);
+        assertFileContent(uncommittedFile, uncommittedContent);
+
+        sut.resetHardTo(sha1Commit1);
+
+        assertFileContent(file, content1);
+        assertEquals(sha1Commit1, sut.getHeadSha1());
+        // uncommitted files will still exist after this!
+        assertTrue(uncommittedFile.exists());
+    }
+
+    private void assertFileContent(File file, String expected) throws IOException {
+        String actual = new BufferedReader(new FileReader(file)).readLine();
+        assertEquals(expected, actual);
+    }
+
     private String commitSomething(GitWrapper sut) throws Exception {
         return commitSomething(sut, "blah.txt");
     }
@@ -166,8 +221,14 @@ public class GitWrapperTest {
 
     private File createNewFileWithContent(String fileName, String content) throws IOException {
         File file = createNewFile(fileName);
-        (new FileWriter(file)).write(content);
+        writeContentToFile(file, content);
         return file;
+    }
+
+    private void writeContentToFile(File file, String content) throws IOException {
+        FileWriter fileWriter = new FileWriter(file);
+        fileWriter.write(content);
+        fileWriter.flush();
     }
 
     private File createNewFile(String fileName) throws IOException {

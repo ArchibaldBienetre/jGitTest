@@ -3,6 +3,7 @@ package com.example.jgit;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeCommand;
 import org.eclipse.jgit.api.MergeResult;
+import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
@@ -136,6 +137,25 @@ public class GitWrapper {
                 .setFastForward(MergeCommand.FastForwardMode.NO_FF) // create a merge commit
                 .call();
         return ObjectId.toString(mergeResult.getNewHead());
+    }
+
+    /**
+     * Encapsulates <a href="https://git-scm.com/docs/git-reset">git reset --hard</a>
+     */
+    public String resetHard() throws GitAPIException {
+        Ref ref = _git.reset().setMode(ResetCommand.ResetType.HARD).call();
+        return ObjectId.toString(ref.getObjectId());
+    }
+
+    /**
+     * Encapsulates <a href="https://git-scm.com/docs/git-reset">git reset --hard</a>
+     */
+    public String resetHardTo(String sha1OrBranch) throws GitAPIException {
+        Ref ref = _git.reset()
+                .setMode(ResetCommand.ResetType.HARD)
+                .setRef(sha1OrBranch)
+                .call();
+        return ObjectId.toString(ref.getObjectId());
     }
 
     public String getHeadSha1() throws IOException {
