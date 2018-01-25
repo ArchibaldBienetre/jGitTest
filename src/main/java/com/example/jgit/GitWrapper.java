@@ -1,5 +1,6 @@
 package com.example.jgit;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeCommand;
 import org.eclipse.jgit.api.MergeResult;
@@ -31,12 +32,17 @@ public class GitWrapper {
      */
     public GitWrapper(File directory) throws IOException, GitAPIException {
         FileRepositoryBuilder builder = new FileRepositoryBuilder().setWorkTree(directory);
-        File hiddenGitDir = builder.getGitDir();
-        if (hiddenGitDir == null || !hiddenGitDir.exists()) {
-            Git.init().setBare(false).setDirectory(directory).call();
+        File hiddenGitDir = new File(directory, ".git");
+        if (!hiddenGitDir.exists()) {
+            init(directory);
         }
         Repository repository = builder.build();
         _git = new Git(repository);
+    }
+
+    @VisibleForTesting
+    void init(File directory) throws GitAPIException {
+        Git.init().setBare(false).setDirectory(directory).call();
     }
 
     /**

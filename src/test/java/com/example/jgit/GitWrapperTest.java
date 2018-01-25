@@ -1,5 +1,6 @@
 package com.example.jgit;
 
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.util.FileUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,10 +32,23 @@ public class GitWrapperTest {
 
     @Test
     public void test_that_GitWrapper_creates_a_repository_at_given_folder() throws Exception {
-        GitWrapper sut = new GitWrapper(_tempDir);
+        new GitWrapper(_tempDir);
 
         File expectedHiddenGitDir = new File(_tempDir, ".git");
         assertTrue(expectedHiddenGitDir.exists(), "should create hidden directory");
+    }
+
+    @Test
+    public void test_that_GitWrapper_does_not_init_existing_repository() throws Exception {
+        TestGitWrapper git1 = new TestGitWrapper(_tempDir);
+        File expectedHiddenGitDir = new File(_tempDir, ".git");
+        assertTrue(expectedHiddenGitDir.exists());
+        assertTrue(git1.wasInitCalled());
+
+        TestGitWrapper git2 = new TestGitWrapper(_tempDir);
+
+        assertTrue(expectedHiddenGitDir.exists());
+        assertFalse(git2.wasInitCalled());
     }
 
     @Test
@@ -292,4 +306,23 @@ public class GitWrapperTest {
         assertTrue(file.createNewFile());
         return file;
     }
+
+    private static class TestGitWrapper extends GitWrapper {
+        private boolean _initCalled;
+
+        TestGitWrapper(File directory) throws IOException, GitAPIException {
+            super(directory);
+        }
+
+        @Override
+        void init(File directory) throws GitAPIException {
+            _initCalled = true;
+            super.init(directory);
+        }
+
+        boolean wasInitCalled() {
+            return _initCalled;
+        }
+    }
+
 }
