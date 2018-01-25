@@ -41,6 +41,7 @@ public class GitWrapper {
 
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-add">git add</a>
+     *
      * @param filePattern a concrete file name, or "." for all files - <em>jGit's add does not support globs (like, *.java), as of yet</em>
      */
     public void add(String filePattern) throws GitAPIException {
@@ -102,6 +103,8 @@ public class GitWrapper {
 
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-checkout">git checkout -b</a>
+     *
+     * @return SHA-1 of HEAD after checkout (still equal to the one you branched from)
      */
     public String createBranchAndCheckout(String branchName) throws GitAPIException {
         Ref ref = _git.checkout().setCreateBranch(true).setName(branchName).call();
@@ -110,6 +113,8 @@ public class GitWrapper {
 
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-checkout">git checkout</a>
+     *
+     * @return SHA-1 of HEAD after checkout
      */
     public String checkOutBranch(String branchName) throws GitAPIException {
         Ref ref = _git.checkout().setName(branchName).call();
@@ -119,6 +124,8 @@ public class GitWrapper {
     /**
      * Checks out branch ({@link #checkOutBranch(String)}), and
      * encapsulates <a href="https://git-scm.com/docs/git-branch">git branch -D</a>
+     *
+     * @return name of deleted branch as ref ("refs/heads/BRANCH")
      */
     public String checkoutMasterAndDeleteBranch(String branchName) throws GitAPIException {
         checkOutBranch("master");
@@ -127,6 +134,8 @@ public class GitWrapper {
 
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-merge">git-merge --no-ff</a>
+     *
+     * @return SHA-1 of HEAD after merge (merge commit)
      */
     public String merge(String branchName) throws GitAPIException {
         Optional<Ref> branchWithMatchingName = findBranchByName(branchName);
@@ -141,6 +150,8 @@ public class GitWrapper {
 
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-reset">git reset --hard</a>
+     *
+     * @return SHA-1 of HEAD after reset
      */
     public String resetHard() throws GitAPIException {
         Ref ref = _git.reset().setMode(ResetCommand.ResetType.HARD).call();
@@ -149,6 +160,8 @@ public class GitWrapper {
 
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-reset">git reset --hard</a>
+     *
+     * @return SHA-1 of HEAD after reset
      */
     public String resetHardTo(String sha1OrBranch) throws GitAPIException {
         Ref ref = _git.reset()

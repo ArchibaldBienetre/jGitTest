@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class GitWrapperTest {
 
+    private static final String MASTER = "master";
     private static final String TEST_BRANCH = "TEST_Branch";
     private File _tempDir;
 
@@ -68,6 +69,23 @@ public class GitWrapperTest {
     }
 
     @Test
+    public void test_that_GitWrapper_can_switch_branches() throws Exception {
+        GitWrapper sut = new GitWrapper(_tempDir);
+        assertFalse(sut.doesBranchExist(TEST_BRANCH));
+        commitSomething(sut, "blah1.txt");
+        String sha1Master = sut.getHeadSha1();
+        sut.createBranchAndCheckout(TEST_BRANCH);
+        String sha1Branch = commitSomething(sut, "blah2.txt");
+        assertNotEquals(sha1Master, sha1Branch);
+        assertEquals(sha1Branch, sut.getHeadSha1());
+
+        String sha1Checkout = sut.checkOutBranch(MASTER);
+
+        assertEquals(sha1Master, sha1Checkout);
+    }
+
+
+    @Test
     public void test_that_GitWrapper_can_delete_branch() throws Exception {
         GitWrapper sut = new GitWrapper(_tempDir);
         commitSomething(sut);
@@ -91,10 +109,11 @@ public class GitWrapperTest {
         assertEquals(TEST_BRANCH, sut.getCurrentBranchName());
         String sha1Branch = sut.getHeadSha1();
         assertNotEquals(sha1Master, sha1Branch);
-        sut.checkOutBranch("master");
+        sut.checkOutBranch(MASTER);
 
         String actual = sut.merge(TEST_BRANCH);
 
+        assertEquals(actual, sut.getHeadSha1());
         assertNotEquals(actual, sha1Branch);
         assertNotEquals(actual, sha1Master);
     }
@@ -103,7 +122,7 @@ public class GitWrapperTest {
     public void test_getHeadSha1() throws Exception {
         GitWrapper sut = new GitWrapper(_tempDir);
         String sha1 = commitSomething(sut);
-        assertEquals("master", sut.getCurrentBranchName());
+        assertEquals(MASTER, sut.getCurrentBranchName());
         String logSha1 = sut.getLastLogSha1();
         assertEquals(sha1, logSha1);
 
@@ -166,10 +185,11 @@ public class GitWrapperTest {
         writeContentToFile(file, newContent);
         assertFileContent(file, newContent);
 
-        sut.resetHard();
+        String result = sut.resetHard();
 
         assertFileContent(file, originalContent);
         assertEquals(shaCommit1, sut.getHeadSha1());
+        assertEquals(shaCommit1, result);
         assertIterableEquals(emptySet(), sut.clean());
     }
 
@@ -195,10 +215,46 @@ public class GitWrapperTest {
         writeContentToFile(uncommittedFile, uncommittedContent);
         assertFileContent(uncommittedFile, uncommittedContent);
 
-        sut.resetHardTo(sha1Commit1);
+        String result = sut.resetHardTo(sha1Commit1);
 
         assertFileContent(file, content1);
         assertEquals(sha1Commit1, sut.getHeadSha1());
+        assertEquals(sha1Commit1, result);
+        // uncommitted files will still exist after this!
+        assertTrue(uncommittedFile.exists());
+
+    }
+
+    @Test
+    public void test_resetHardToBranch() throws Exception {
+        GitWrapper sut = new GitWrapper(_tempDir);
+        String content1 = "12345";
+        String fileName = "blah1.txt";
+        File file = createNewFileWithContent(fileName, content1);
+        sut.add(".");
+        String sha1Commit1 = sut.commit("commit files");
+        assertFileContent(file, content1);
+        assertEquals(MASTER, sut.getCurrentBranchName());
+
+        sut.createBranchAndCheckout(TEST_BRANCH);
+        String content2 = "98765";
+        writeContentToFile(file, content2);
+        sut.add(".");
+        sut.commit("commit files 2");
+        assertFileContent(file, content2);
+        assertEquals(TEST_BRANCH, sut.getCurrentBranchName());
+
+        String uncommittedContent = "uncommitted";
+        String uncommittedFileName = "test.txt";
+        File uncommittedFile = createNewFileWithContent(uncommittedFileName, uncommittedContent);
+        writeContentToFile(uncommittedFile, uncommittedContent);
+        assertFileContent(uncommittedFile, uncommittedContent);
+
+        String result = sut.resetHardTo(MASTER);
+
+        assertFileContent(file, content1);
+        assertEquals(sha1Commit1, sut.getHeadSha1());
+        assertEquals(sha1Commit1, result);
         // uncommitted files will still exist after this!
         assertTrue(uncommittedFile.exists());
     }
