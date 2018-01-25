@@ -25,19 +25,28 @@ import static com.google.common.collect.Iterables.getOnlyElement;
  */
 public class GitWrapper {
 
-    private final Git _git;
-
     /**
      * Create or open a GIT repository at the given directory
      */
-    public GitWrapper(File directory) throws IOException, GitAPIException {
+    public static GitWrapper forLocalOnlyRepository(File directory) throws IOException, GitAPIException {
+        return new GitWrapper(directory);
+    }
+
+    private final Git _git;
+
+    @VisibleForTesting
+    GitWrapper(File directory) throws IOException, GitAPIException {
+        _git = localSetup(directory);
+    }
+
+    private Git localSetup(File directory) throws IOException, GitAPIException {
         FileRepositoryBuilder builder = new FileRepositoryBuilder().setWorkTree(directory);
         File hiddenGitDir = new File(directory, ".git");
         if (!hiddenGitDir.exists()) {
             init(directory);
         }
         Repository repository = builder.build();
-        _git = new Git(repository);
+        return new Git(repository);
     }
 
     @VisibleForTesting
