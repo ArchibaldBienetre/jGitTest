@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.util.Optional;
 import java.util.Set;
 
 import static java.util.Collections.emptySet;
@@ -97,7 +98,6 @@ public class GitWrapperTest {
 
         assertEquals(sha1Master, sha1Checkout);
     }
-
 
     @Test
     public void test_that_GitWrapper_can_delete_branch() throws Exception {
@@ -271,6 +271,45 @@ public class GitWrapperTest {
         assertEquals(sha1Commit1, result);
         // uncommitted files will still exist after this!
         assertTrue(uncommittedFile.exists());
+    }
+
+    @Test
+    public void test_getFileContentOfRevision_can_retrieve_content_of_head_revision() throws Exception {
+        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        String expectedContent = "12345";
+        String fileName = "blah1.txt";
+        createNewFileWithContent(fileName, expectedContent);
+        sut.add(".");
+        sut.commit("commit files");
+
+        Optional<String> optionalContent = sut.getFileContentOfRevision("HEAD", fileName);
+
+        assertTrue(optionalContent.isPresent());
+        assertEquals(expectedContent, optionalContent.get());
+    }
+
+    @Test
+    public void test_getFileContentOfRevision_can_retrieve_content_of_old_revision() throws Exception {
+        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        String fileName = "blah1.txt";
+        String content1 = "12345";
+        String content2 = "987612345";
+        File file = createNewFileWithContent(fileName, content1);
+        sut.add(".");
+        String sha1Commit1 = sut.commit("commit files (1)");
+        writeContentToFile(file, content2);
+        sut.add(".");
+        String sha1Commit2 = sut.commit("commit files (2)");
+
+        Optional<String> optionalContent1 = sut.getFileContentOfRevision(sha1Commit1, fileName);
+        Optional<String> optionalContent2 = sut.getFileContentOfRevision(sha1Commit2, fileName);
+        Optional<String> optionalContentNonPresentFile = sut.getFileContentOfRevision(sha1Commit2, fileName + ".nonexistent");
+
+        assertTrue(optionalContent1.isPresent());
+        assertEquals(content1, optionalContent1.get());
+        assertTrue(optionalContent2.isPresent());
+        assertEquals(content2, optionalContent2.get());
+        assertFalse(optionalContentNonPresentFile.isPresent());
     }
 
     private void assertFileContent(File file, String expected) throws IOException {

@@ -6,11 +6,13 @@ import org.eclipse.jgit.api.MergeCommand;
 import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevTree;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.treewalk.filter.PathFilter;
 
 import java.io.File;
 import java.io.IOException;
@@ -192,6 +194,35 @@ public class GitWrapper {
 
     public String getCurrentBranchName() throws IOException {
         return _git.getRepository().getBranch();
+    }
+
+    /**
+     * Retrieve the content of a file in a given revision.
+     *
+     * Shoutouts: could not have guessed how to do it without
+     * <a href="https://stackoverflow.com/questions/39696689/jgit-use-treewalk-to-get-content-of-file">the folks on Stackoverflow</a>.
+     * @param revisionString revision String identifying the revision you want
+     * @param filePath path to file you want to retrieve
+     * @return the content of the file if found
+     */
+    public Optional<String> getFileContentOfRevision(String revisionString, String filePath) throws IOException, GitAPIException {
+        ObjectId objectId = _git.getRepository().resolve(revisionString);
+        try (RevWalk revWalk = new RevWalk((_git.getRepository()))) {
+            RevCommit parsedCommit = revWalk.parseCommit(objectId);
+            RevTree tree = parsedCommit.getTree();
+            try (TreeWalk treeWalk = new TreeWalk(_git.getRepository())) {
+                treeWalk.addTree(tree);
+                treeWalk.setRecursive(true);
+                treeWalk.setFilter(PathFilter.create(filePath));
+                if (!treeWalk.next()) {
+                    return Optional.empty();
+                }
+                // get first matching only
+                ObjectId fileObjectId = treeWalk.getObjectId(0);
+                ObjectLoader loader = _git.getRepository().open(fileObjectId, Constants.OBJ_BLOB);
+                return Optional.of(new String(loader.getBytes()));
+            }
+        }
     }
 
     public boolean doesBranchExist(String branchName) throws GitAPIException {
