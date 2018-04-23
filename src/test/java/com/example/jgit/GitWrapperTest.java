@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static org.junit.jupiter.api.Assertions.*;
@@ -384,6 +385,39 @@ public class GitWrapperTest {
         assertEquals(2, actualOutputCommit2.size());
         assertTrue(actualOutputCommit2.contains(dirName + "/" + file2Name));
         assertTrue(actualOutputCommit2.contains(dirName + "/" + file3Name));
+    }
+
+    @Test
+    public void test_getAllAncestorCommits() throws Exception {
+        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        String commit1 = commitSomething(sut, "blah1.txt");
+        String commit2 = commitSomething(sut, "blah2.txt");
+        String commit3 = commitSomething(sut, "blah3.txt");
+        List<String> expected = asList(commit2, commit1);
+
+        List<String> actual1 = sut.getAllAncestorCommits("HEAD");
+        List<String> actual2 = sut.getAllAncestorCommits(commit3);
+
+        assertEquals(expected, actual1);
+        assertEquals(actual1, actual2);
+    }
+
+    @Test
+    public void test_getMergeBase() throws Exception {
+        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        String baseCommit = commitSomething(sut, "blah1.txt");
+        sut.createBranchAndCheckout(TEST_BRANCH);
+        String commitOnBranch = commitSomething(sut, "blah2.txt");
+        sut.checkOutBranch(MASTER);
+        String commitOnMaster = commitSomething(sut, "blah3.txt");
+
+        Optional<String> actual1 = sut.getMergeBase(commitOnMaster, commitOnBranch);
+        Optional<String> actual2 = sut.getMergeBase(MASTER, TEST_BRANCH);
+
+        assertTrue(actual1.isPresent());
+        assertEquals(baseCommit, actual1.get());
+        assertTrue(actual2.isPresent());
+        assertEquals(baseCommit, actual2.get());
     }
 
     private void assertFileContent(File file, String expected) throws IOException {

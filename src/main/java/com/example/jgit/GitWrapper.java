@@ -8,8 +8,10 @@ import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
@@ -17,10 +19,7 @@ import org.eclipse.jgit.treewalk.filter.TreeFilter;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 import static com.google.common.collect.Iterables.getOnlyElement;
 
@@ -251,7 +250,7 @@ public class GitWrapper {
         } else {
             filter = PathFilter.create(directoryPath);
         }
-        try (RevWalk revWalk = new RevWalk((_git.getRepository()));
+        try (RevWalk revWalk = new RevWalk(_git.getRepository());
              TreeWalk treeWalkRecursive = new TreeWalk(_git.getRepository())
         ) {
             RevCommit parsedCommit = revWalk.parseCommit(objectId);
@@ -264,6 +263,48 @@ public class GitWrapper {
             }
         }
         return result;
+    }
+
+    public List<String> getAllAncestorCommits(String revisionString) throws IOException {
+        List<String> result = new ArrayList<>();
+        ObjectId revisionId = _git.getRepository().resolve(revisionString);
+        try (RevWalk revWalk = new RevWalk(_git.getRepository())) {
+            revWalk.sort(RevSort.TOPO);
+            RevCommit parsedCommit = revWalk.parseCommit(revisionId);
+            RevCommit[] parents = parsedCommit.getParents();
+            while (parents != null && parents.length > 0) {
+                RevCommit firstParent = parents[0];
+                String parentRevisionId = ObjectId.toString(firstParent);
+                result.add(parentRevisionId);
+                RevCommit parsedParentRevision = revWalk.parseCommit(firstParent.toObjectId());
+                parents = parsedParentRevision.getParents();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Encapsulates <a href="https://git-scm.com/docs/git-merge-base">git merge-base revision1 revision2</a>
+     *
+     * @return Optional merge-base commit SHA-1 as String if it exists
+     */
+    public Optional<String> getMergeBase(String revisionString1, String revisionString2) throws IOException {
+        try (RevWalk revWalk = new RevWalk(_git.getRepository())) {
+            revWalk.sort(RevSort.TOPO);
+            revWalk.setRevFilter(RevFilter.MERGE_BASE);
+            ObjectId revisionId1 = _git.getRepository().resolve(revisionString1);
+            RevCommit parsedCommit = revWalk.parseCommit(revisionId1);
+            revWalk.markStart(parsedCommit);
+            ObjectId revisionId2 = _git.getRepository().resolve(revisionString2);
+            RevCommit parsedCommit2 = revWalk.parseCommit(revisionId2);
+            revWalk.markStart(parsedCommit2);
+            Iterator<RevCommit> it = revWalk.iterator();
+            if (it.hasNext()) {
+                RevCommit revision = it.next();
+                return Optional.of(ObjectId.toString(revision));
+            }
+        }
+        return Optional.empty();
     }
 
     public boolean doesBranchExist(String branchName) throws GitAPIException {
