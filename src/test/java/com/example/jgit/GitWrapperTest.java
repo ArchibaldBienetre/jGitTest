@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -310,6 +311,79 @@ public class GitWrapperTest {
         assertTrue(optionalContent2.isPresent());
         assertEquals(content2, optionalContent2.get());
         assertFalse(optionalContentNonPresentFile.isPresent());
+    }
+
+
+    @Test
+    public void test_lsTree_for_root_directory() throws Exception {
+        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        String file1Name = "blah1.txt";
+        File file1 = createNewFileWithContent(file1Name, "12345");
+        String dirName = "directory";
+        File dir = new File(_tempDir, dirName);
+        assertTrue(dir.mkdir());
+        String file2Name = "blah2.txt";
+        File file2 = new File(dir, file2Name);
+        assertTrue(file2.createNewFile());
+        sut.add(".");
+        String commit1 = sut.commit("commit files");
+        String file3Name = "blah3.txt";
+        File file3 = new File(dir, file3Name);
+        assertTrue(file3.createNewFile());
+        sut.add(".");
+        String commit2 = sut.commit("commit another file");
+        sut.clean();
+        assertTrue(file1.exists());
+        assertTrue(file2.exists());
+        assertTrue(file3.exists());
+
+        List<String> actualOutputCommit1 = sut.lsTree(commit1, ".");
+        List<String> actualOutputCommit2 = sut.lsTree(commit2, ".");
+
+        assertFalse(actualOutputCommit1.isEmpty());
+        assertEquals(2, actualOutputCommit1.size());
+        assertTrue(actualOutputCommit1.contains(file1Name));
+        assertTrue(actualOutputCommit1.contains(dirName + "/" + file2Name));
+        assertFalse(actualOutputCommit1.contains(dirName + "/" + file3Name));
+        assertFalse(actualOutputCommit2.isEmpty());
+        assertEquals(3, actualOutputCommit2.size());
+        assertTrue(actualOutputCommit2.contains(file1Name));
+        assertTrue(actualOutputCommit2.contains(dirName + "/" + file2Name));
+        assertTrue(actualOutputCommit2.contains(dirName + "/" + file3Name));
+    }
+
+    @Test
+    public void test_lsTree_for_specific_directory() throws Exception {
+        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        File file1 = createNewFileWithContent("blah1.txt", "12345");
+        String dirName = "directory";
+        File dir = new File(_tempDir, dirName);
+        assertTrue(dir.mkdir());
+        String file2Name = "blah2.txt";
+        File file2 = new File(dir, file2Name);
+        assertTrue(file2.createNewFile());
+        sut.add(".");
+        String commit1 = sut.commit("commit files");
+        String file3Name = "blah3.txt";
+        File file3 = new File(dir, file3Name);
+        assertTrue(file3.createNewFile());
+        sut.add(".");
+        String commit2 = sut.commit("commit another file");
+        sut.clean();
+        assertTrue(file1.exists());
+        assertTrue(file2.exists());
+        assertTrue(file3.exists());
+
+        List<String> actualOutputCommit1 = sut.lsTree(commit1, dirName);
+        List<String> actualOutputCommit2 = sut.lsTree(commit2, dirName);
+
+        assertFalse(actualOutputCommit1.isEmpty());
+        assertEquals(1, actualOutputCommit1.size());
+        assertTrue(actualOutputCommit1.contains(dirName + "/" + file2Name));
+        assertFalse(actualOutputCommit2.isEmpty());
+        assertEquals(2, actualOutputCommit2.size());
+        assertTrue(actualOutputCommit2.contains(dirName + "/" + file2Name));
+        assertTrue(actualOutputCommit2.contains(dirName + "/" + file3Name));
     }
 
     private void assertFileContent(File file, String expected) throws IOException {
