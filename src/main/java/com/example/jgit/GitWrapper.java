@@ -12,6 +12,7 @@ import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
+import org.eclipse.jgit.revwalk.filter.SkipRevFilter;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
@@ -265,19 +266,31 @@ public class GitWrapper {
         return result;
     }
 
-    public List<String> getAllAncestorCommits(String revisionString) throws IOException {
+    /**
+     * Encapsulates a simple <a href="https://git-scm.com/docs/git-rev-list">git rev-list olderRevision youngerRevision</a>
+     *
+     * @return List of SHA-1 of commits between the given ones
+     */
+    public List<String> getCommitsBetween(String olderExclusive, String youngerExclusive) throws IOException {
         List<String> result = new ArrayList<>();
-        ObjectId revisionId = _git.getRepository().resolve(revisionString);
         try (RevWalk revWalk = new RevWalk(_git.getRepository())) {
             revWalk.sort(RevSort.TOPO);
-            RevCommit parsedCommit = revWalk.parseCommit(revisionId);
-            RevCommit[] parents = parsedCommit.getParents();
-            while (parents != null && parents.length > 0) {
-                RevCommit firstParent = parents[0];
-                String parentRevisionId = ObjectId.toString(firstParent);
-                result.add(parentRevisionId);
-                RevCommit parsedParentRevision = revWalk.parseCommit(firstParent.toObjectId());
-                parents = parsedParentRevision.getParents();
+            RevFilter revFilter = SkipRevFilter.create(1);
+            revWalk.setRevFilter(revFilter);
+            ObjectId oldRevsionId = _git.getRepository().resolve(olderExclusive);
+            RevCommit oldRevisionCommit = revWalk.parseCommit(oldRevsionId);
+            ObjectId youngRevisionId = _git.getRepository().resolve(youngerExclusive);
+            RevCommit youngRevisionCommit = revWalk.parseCommit(youngRevisionId);
+
+            if (oldRevisionCommit.equals(youngRevisionCommit)) {
+                return result;
+            }
+            revWalk.markStart(youngRevisionCommit);
+            for (RevCommit revision : revWalk) {
+                if (revision.equals(oldRevisionCommit)) {
+                    break;
+                }
+                result.add(ObjectId.toString(revision));
             }
         }
         return result;
@@ -286,7 +299,7 @@ public class GitWrapper {
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-merge-base">git merge-base revision1 revision2</a>
      *
-     * @return Optional merge-base commit SHA-1 as String if it exists
+     * @return Optional SHA-1 of merge-base commit if it exists
      */
     public Optional<String> getMergeBase(String revisionString1, String revisionString2) throws IOException {
         try (RevWalk revWalk = new RevWalk(_git.getRepository())) {

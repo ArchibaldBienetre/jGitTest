@@ -8,13 +8,13 @@ import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singleton;
+import static java.util.Collections.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class GitWrapperTest {
@@ -388,18 +388,32 @@ public class GitWrapperTest {
     }
 
     @Test
-    public void test_getAllAncestorCommits() throws Exception {
+    public void test_getCommitsBetween() throws Exception {
         GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
         String commit1 = commitSomething(sut, "blah1.txt");
         String commit2 = commitSomething(sut, "blah2.txt");
         String commit3 = commitSomething(sut, "blah3.txt");
-        List<String> expected = asList(commit2, commit1);
+        String commit4 = commitSomething(sut, "blah4.txt");
 
-        List<String> actual1 = sut.getAllAncestorCommits("HEAD");
-        List<String> actual2 = sut.getAllAncestorCommits(commit3);
+        List<String> actualAll = sut.getCommitsBetween(commit1, commit4);
+        List<String> actualAll2 = sut.getCommitsBetween(commit1, "HEAD");
+        List<String> actualFirstMissing = sut.getCommitsBetween(commit2, commit4);
+        List<String> actualLastMissing = sut.getCommitsBetween(commit1, commit3);
+        List<String> actualSameCommit = sut.getCommitsBetween(commit4, commit4);
+        List<String> actualSameCommit2 = sut.getCommitsBetween(commit4, "HEAD");
+        List<String> actualSameCommit3 = sut.getCommitsBetween(commit3, commit3);
 
-        assertEquals(expected, actual1);
-        assertEquals(actual1, actual2);
+        List<String> expectedAll = asList(commit3, commit2);
+        assertEquals(actualAll, actualAll2);
+        assertEquals(expectedAll, actualAll);
+        List<String> expectedFirstMissing = singletonList(commit3);
+        assertEquals(expectedFirstMissing, actualFirstMissing);
+        List<String> expectedLastMissing = singletonList(commit2);
+        assertEquals(expectedLastMissing, actualLastMissing);
+        List<Object> expectedSameCommit = Collections.emptyList();
+        assertEquals(actualSameCommit, actualSameCommit2);
+        assertEquals(actualSameCommit2, actualSameCommit3);
+        assertEquals(expectedSameCommit, actualSameCommit);
     }
 
     @Test
