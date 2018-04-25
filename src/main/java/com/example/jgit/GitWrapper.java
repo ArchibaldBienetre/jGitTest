@@ -320,6 +320,16 @@ public class GitWrapper {
         return Optional.empty();
     }
 
+    /**
+     * Encapsulates <a href="https://git-scm.com/docs/git-diff">git diff</a>
+     *
+     * Returns a mapping file path > list of {@link GitDiffType}s containing the differences between the given revisions.
+     */
+    public Map<String, List<GitDiffType>> getFileToDiffTypeForRevision(String revisionStringOld, String revisionStringNew) throws IOException, GitAPIException {
+        Map<String, List<GitDiffType>> result = new HashMap<>();
+        return result;
+    }
+
     public boolean doesBranchExist(String branchName) throws GitAPIException {
         return findBranchByName(branchName).isPresent();
     }

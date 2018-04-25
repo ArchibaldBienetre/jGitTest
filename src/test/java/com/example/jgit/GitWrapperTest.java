@@ -7,11 +7,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.*;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -434,6 +434,160 @@ public class GitWrapperTest {
         assertEquals(baseCommit, actual2.get());
     }
 
+    @Test
+    public void test_that_getFileToDiffTypeForRevision_recognizes_ADD() throws Exception {
+        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        createNewFileWithContent("blah1.txt", "12345");
+        sut.add(".");
+        String initialCommit = sut.commit("committing add of blah1.txt");
+        createNewFileWithContent("blah2.txt", "23456");
+        sut.add(".");
+        String testCommit = sut.commit("committing add of blah2.txt");
+
+        Map<String, List<GitDiffType>> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
+        Map<String, List<GitDiffType>> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
+
+        assertFalse(actual.isEmpty());
+        assertFalse(actual2.isEmpty());
+        assertEquals(actual, actual2);
+        assertEquals(asMap("blah2.txt", singletonList(GitDiffType.ADD)), actual);
+    }
+
+    @Test
+    public void test_that_getFileToDiffTypeForRevision_recognizes_RENAME() throws Exception {
+        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        createNewFileWithContent("blah1.txt", "12345");
+        sut.add(".");
+        String initialCommit = sut.commit("committing add of blah1.txt");
+        File file1Renamed = renameFile("blah1.txt", "blah1-RENAMED.txt");
+        sut.add(".");
+        String testCommit = sut.commit("committing rename of blah1.txt");
+
+        Map<String, List<GitDiffType>> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
+        Map<String, List<GitDiffType>> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
+
+        assertFalse(actual.isEmpty());
+        assertFalse(actual2.isEmpty());
+        assertEquals(actual, actual2);
+        assertEquals(asMap("blah1-RENAMED.txt", singletonList(GitDiffType.RENAME)), actual);
+    }
+
+    @Test
+    public void test_that_getFileToDiffTypeForRevision_recognizes_DELETE() throws Exception {
+        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        createNewFileWithContent("blah1.txt", "12345");
+        sut.add(".");
+        String initialCommit = sut.commit("committing add of blah1.txt");
+        deleteFile("blah1.txt");
+        sut.add(".");
+        String testCommit = sut.commit("committing deletion of blah1.txt");
+
+        Map<String, List<GitDiffType>> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
+        Map<String, List<GitDiffType>> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
+        Map<String, List<GitDiffType>> actualAll = sut.getFileToDiffTypeForRevision(null, "HEAD");
+
+        assertFalse(actual.isEmpty());
+        assertFalse(actual2.isEmpty());
+        assertFalse(actualAll.isEmpty());
+        assertEquals(actual, actual2);
+        assertEquals(actual, actualAll);
+        assertEquals(asMap("blah1.txt", singletonList(GitDiffType.DELETE)), actual);
+    }
+
+    @Test
+    public void test_that_getFileToDiffTypeForRevision_recognizes_MOVE() throws Exception {
+        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        File file1 = createNewFileWithContent("blah1.txt", "12345");
+        sut.add(".");
+        String initialCommit = sut.commit("committing add of blah1.txt");
+        File subDirectory = new File(_tempDir, "directory");
+        subDirectory.mkdirs();
+        Files.move(file1.toPath(), subDirectory.toPath().resolve("blah1.txt"));
+        File newFile3 = new File(subDirectory, "blah1.txt");
+        assertTrue(newFile3.exists());
+        sut.add(".");
+        String testCommit = sut.commit("committing move of blah1.txt");
+
+        Map<String, List<GitDiffType>> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
+        Map<String, List<GitDiffType>> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
+
+        assertFalse(actual.isEmpty());
+        assertFalse(actual2.isEmpty());
+        assertEquals(actual, actual2);
+        assertEquals(asMap("blah1.txt", "directory/blah1.txt", singletonList(GitDiffType.DELETE), singletonList(GitDiffType.ADD)), actual);
+    }
+
+    @Test
+    public void test_that_getFileToDiffTypeForRevision_recognizes_COPY() throws Exception {
+        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        File file1 = createNewFileWithContent("blah1.txt", "12345");
+        sut.add(".");
+        String initialCommit = sut.commit("committing add of blah1.txt");
+        File subDirectory = new File(_tempDir, "directory");
+        subDirectory.mkdirs();
+        Path newFilePath = subDirectory.toPath().resolve("blah1.txt");
+        Files.copy(file1.toPath(), newFilePath);
+        assertTrue(newFilePath.toFile().exists());
+        sut.add(".");
+        String testCommit = sut.commit("committing copy of blah1.txt");
+
+        Map<String, List<GitDiffType>> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
+        Map<String, List<GitDiffType>> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
+
+        assertFalse(actual.isEmpty());
+        assertFalse(actual2.isEmpty());
+        assertEquals(actual, actual2);
+        assertEquals(asMap("directory/blah1.txt", singletonList(GitDiffType.COPY)), actual);
+    }
+
+    @Test
+    public void test_that_getFileToDiffTypeForRevision_recognizes_MODIFY() throws Exception {
+        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        File file1 = createNewFileWithContent("blah1.txt", "12345");
+        sut.add(".");
+        String initialCommit = sut.commit("committing add of blah1.txt");
+        Files.write(file1.toPath(), "MODIFIED CONTENT 9876543210".getBytes(StandardCharsets.UTF_8), StandardOpenOption.WRITE);
+        sut.add(".");
+        String testCommit = sut.commit("committing modify of blah1-RENAMED.txt");
+
+        Map<String, List<GitDiffType>> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
+        Map<String, List<GitDiffType>> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
+
+        assertFalse(actual.isEmpty());
+        assertFalse(actual2.isEmpty());
+        assertEquals(actual, actual2);
+        assertEquals(asMap("blah1.txt", singletonList(GitDiffType.MODIFY)), actual);
+    }
+
+    @Test
+    public void test_getFileToDiffTypeForRevision_for_same_commit() throws Exception {
+        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        createNewFileWithContent("blah1.txt", "12345");
+        createNewFileWithContent("blah2.txt", "12345");
+        File subDirectory = new File(_tempDir, "directory");
+        subDirectory.mkdirs();
+        File file3 = new File(subDirectory, "blah3.txt");
+        assertTrue(file3.createNewFile());
+        writeContentToFile(file3, "12345");
+        sut.add(".");
+        sut.commit("committing add of blah1.txt, blah2.txt, blah3.txt");
+
+        renameFile("blah1.txt", "blah1-RENAMED.txt");
+        sut.add(".");
+        String renameCommit = sut.commit("committing rename of blah1.txt");
+        deleteFile("blah2.txt");
+        sut.add(".");
+        String deleteCommit = sut.commit("committing deletion of blah2.txt");
+
+        Map<String, List<GitDiffType>> actualSame = sut.getFileToDiffTypeForRevision("HEAD", "HEAD");
+        Map<String, List<GitDiffType>> actualSame2 = sut.getFileToDiffTypeForRevision(renameCommit, renameCommit);
+        Map<String, List<GitDiffType>> actualSame3 = sut.getFileToDiffTypeForRevision(deleteCommit, deleteCommit);
+
+        assertTrue(actualSame.isEmpty());
+        assertTrue(actualSame2.isEmpty());
+        assertTrue(actualSame3.isEmpty());
+    }
+
     private void assertFileContent(File file, String expected) throws IOException {
         String actual = new BufferedReader(new FileReader(file)).readLine();
         assertEquals(expected, actual);
@@ -468,7 +622,37 @@ public class GitWrapperTest {
         return file;
     }
 
+    private File renameFile(String oldFileName, String newFileName) throws IOException {
+        File file = new File(_tempDir, oldFileName);
+        File newFile = new File(_tempDir, newFileName);
+        assertTrue(file.exists());
+        file.renameTo(newFile);
+        assertFalse(file.exists());
+        assertTrue(newFile.exists());
+        return newFile;
+    }
+
+    private void deleteFile(String fileName) {
+        File file = new File(_tempDir, fileName);
+        assertTrue(file.exists());
+        assertTrue(file.delete());
+    }
+
+    private Map<String, List<GitDiffType>> asMap(String key, List<GitDiffType> gitDiffTypes) {
+        Map<String, List<GitDiffType>> map = new HashMap<String, List<GitDiffType>>();
+        map.put(key, gitDiffTypes);
+        return map;
+    }
+
+    private Map<String, List<GitDiffType>> asMap(String key1, String key2, List<GitDiffType> gitDiffTypes1, List<GitDiffType> gitDiffTypes2) {
+        Map<String, List<GitDiffType>> map = new HashMap<String, List<GitDiffType>>();
+        map.put(key1, gitDiffTypes1);
+        map.put(key2, gitDiffTypes2);
+        return map;
+    }
+
     private static class TestGitWrapper extends GitWrapper {
+
         private boolean _initCalled;
 
         TestGitWrapper(File directory) throws IOException, GitAPIException {
