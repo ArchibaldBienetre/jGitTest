@@ -80,6 +80,7 @@ public class GitWrapperTest {
         assertTrue(file.exists());
         deleteFile("blah1.txt");
 
+        // this must be done explicitly
         sut.addRemovedFile("blah1.txt");
         String testCommit = sut.commit("committing deletion of blah1.txt");
         sut.clean();
@@ -468,13 +469,10 @@ public class GitWrapperTest {
 
         Map<String, List<GitDiffType>> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
         Map<String, List<GitDiffType>> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
-//        Map<String, List<GitDiffType>> actual3 = sut.getFileToDiffTypeForRevision(initialCommit, null);
 
         assertFalse(actual.isEmpty());
         assertFalse(actual2.isEmpty());
-//        assertFalse(actual3.isEmpty());
         assertEquals(actual, actual2);
-//        assertEquals(actual, actual3);
         assertEquals(asMap("blah2.txt", singletonList(GitDiffType.ADD)), actual);
     }
 
@@ -503,23 +501,6 @@ public class GitWrapperTest {
 
     @Test
     public void test_that_getFileToDiffTypeForRevision_recognizes_DELETE() throws Exception {
-//        2000  cd Desktop/
-//        2001  mkdir gitTestRepo
-//        2002  cd gitTestRepo/
-//        2003  git init
-//        2004  touch myFile.txt
-//        2005  git addFileIfNotDeleted .
-//        2006  git st
-//        2007  git commit -m'adding myFile.txt'
-//        2008  git log
-//        2009  rm myFile.txt
-//        2010  git addFileIfNotDeleted .
-//        2011  git st
-//        2012  git commit -m'deleting myFile.txt'
-//        2017  git diff HEAD^
-//        2018  git diff --name-only HEAD^
-//        2020  git diff --name-status HEAD^
-
         GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
         createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
