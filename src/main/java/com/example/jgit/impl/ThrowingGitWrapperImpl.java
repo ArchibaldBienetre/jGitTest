@@ -28,7 +28,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.*;
 
-import static com.example.jgit.ChangeTypeMapper.INSTANCE;
+import static com.example.jgit.impl.ChangeTypeMapper.INSTANCE;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.stream.Collectors.toMap;
 
