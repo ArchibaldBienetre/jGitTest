@@ -28,9 +28,11 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.example.jgit.ChangeTypeMapper.INSTANCE;
 import static com.google.common.collect.Iterables.getOnlyElement;
+import static java.util.Collections.singletonList;
 
 /**
  * Encapsulates a GIT repository in the file system using <a href="http://wiki.eclipse.org/JGit/User_Guide">jGit</a>
@@ -84,7 +86,7 @@ public class GitWrapper {
 
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-add">git add</a> for the current directory.
-     * <em>jGit's addFileIfNotDeleted behaves weirdly when it comes to deleted files - best use {@link #addRemovedFile()} to delete files!</em>
+     * <em>jGit's addFileIfNotDeleted behaves weirdly when it comes to deleted files - best use {@link #addRemovedFile(String)} ddRemovedFile()} to delete files!</em>
      */
     public void addAllExceptDeletedFiles() throws GitAPIException {
         addFileIfNotDeleted(".");
@@ -92,7 +94,8 @@ public class GitWrapper {
 
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-rm">git rm</a> for the current directory.
-     * <em>jGit's addFileIfNotDeleted behaves weirdly when it comes to deleted files - best use {@link #addRemovedFile()} to delete files!</em>
+     * <em>jGit's addFileIfNotDeleted behaves weirdly when it comes to deleted files - best use {@link #addRemovedFile(String)} to delete files!</em>
+     *
      * @param filePattern see {@link #addFileIfNotDeleted(String)}
      */
     public void addRemovedFile(String filePattern) throws GitAPIException {
@@ -359,15 +362,13 @@ public class GitWrapper {
     }
 
     /**
-     * @see #getFileToDiffTypeForRevision(String, String)
      * @param recognizeRenames if true, moved and renamed files will be recognized as {@link GitDiffType#RENAME} (instead of separate DELETE and ADD)
+     * @see #getFileToDiffTypeForRevision(String, String)
      */
-    public Map<String, List<GitDiffType>> getFileToDiffTypeForRevision(String revisionStringOld, @Nullable String revisionStringNew, boolean recognizeRenames) throws IOException, GitAPIException {
+    public Map<String, List<GitDiffType>> getFileToDiffTypeForRevision(String revisionStringOld, @Nullable String revisionStringNew, boolean recognizeRenames) throws IOException {
         if (revisionStringOld == null) {
             throw new IllegalArgumentException("revisionStringOld must not be null");
         }
-
-        Map<String, List<GitDiffType>> result = new HashMap<>();
         try (RevWalk revWalkOld = new RevWalk(_git.getRepository());
              RevWalk revWalkNew = new RevWalk(_git.getRepository())) {
             AbstractTreeIterator treeParserOld = getCanonicalTreeParser(revWalkOld, revisionStringOld);
@@ -379,11 +380,16 @@ public class GitWrapper {
                 ObjectId revisionIdOld = _git.getRepository().resolve(revisionStringOld);
                 ObjectId revisionIdNew = _git.getRepository().resolve(revisionStringNew);
                 List<DiffEntry> diffs = formatter.scan(revisionIdOld, revisionIdNew);
-                diffs.forEach(diffEntry -> addDiffEntryToResult(result, diffEntry));
+                return diffs.stream()
+                        .map(diffEntry -> Map.entry(
+                                diffEntry.getChangeType() == DiffEntry.ChangeType.DELETE ? diffEntry.getOldPath() : diffEntry.getNewPath(),
+                                INSTANCE.convert(diffEntry.getChangeType())))
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                entry -> singletonList(entry.getValue()),
+                                GitWrapper::mergeLists));
             }
-
         }
-        return result;
     }
 
     @Nullable
@@ -398,15 +404,6 @@ public class GitWrapper {
         return new CanonicalTreeParser(null, revWalk.getObjectReader(), parsedCommit.getTree());
     }
 
-    private void addDiffEntryToResult(Map<String, List<GitDiffType>> result, DiffEntry diffEntry) {
-        GitDiffType converted = INSTANCE.convert(diffEntry.getChangeType());
-        String key = converted == GitDiffType.DELETE ? diffEntry.getOldPath() : diffEntry.getNewPath();
-        if (!result.containsKey(key)) {
-            result.put(key, new ArrayList<>());
-        }
-        result.get(key).add(converted);
-    }
-
     public boolean doesBranchExist(String branchName) throws GitAPIException {
         return findBranchByName(branchName).isPresent();
     }
@@ -416,5 +413,12 @@ public class GitWrapper {
         return branches.stream()
                 .filter(branch -> branch.getName().equals("refs/heads/" + branchName))
                 .findFirst();
+    }
+
+    private static List<GitDiffType> mergeLists(List<GitDiffType> l1, List<GitDiffType> l2) {
+        List<GitDiffType> l = new ArrayList<>();
+        l.addAll(l1);
+        l.addAll(l2);
+        return l;
     }
 }
