@@ -25,11 +25,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static com.example.jgit.ChangeTypeMapper.INSTANCE;
 import static com.google.common.collect.Iterables.getOnlyElement;
-import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toMap;
 
 /**
  * Encapsulates a GIT repository in the file system using <a href="http://wiki.eclipse.org/JGit/User_Guide">jGit</a>
@@ -55,7 +54,7 @@ public class GitWrapper {
         File hiddenGitDir = new File(directory, ".git");
         if (!hiddenGitDir.exists()) {
             // Calling git init on an existing repository should not do much harm  -
-            // BUT but own hook skripts that are not part of the init template may be replaced.
+            // BUT but own hook scripts that are not part of the init template may be replaced.
             // We don't want that - plus, init att this point would be unexpected.
             init(directory);
         }
@@ -302,8 +301,8 @@ public class GitWrapper {
             revWalk.sort(RevSort.TOPO);
             RevFilter revFilter = SkipRevFilter.create(1);
             revWalk.setRevFilter(revFilter);
-            ObjectId oldRevsionId = _git.getRepository().resolve(olderExclusive);
-            RevCommit oldRevisionCommit = revWalk.parseCommit(oldRevsionId);
+            ObjectId oldRevisionId = _git.getRepository().resolve(olderExclusive);
+            RevCommit oldRevisionCommit = revWalk.parseCommit(oldRevisionId);
             ObjectId youngRevisionId = _git.getRepository().resolve(youngerExclusive);
             RevCommit youngRevisionCommit = revWalk.parseCommit(youngRevisionId);
 
@@ -348,10 +347,10 @@ public class GitWrapper {
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-diff">git diff</a>
      * <p>
-     * Returns a mapping file path > list of {@link GitDiffType}s containing the differences between the given revisions.
+     * Returns a mapping file path > {@link GitDiffType} containing the differences between the given revisions.
      * <p>
      */
-    public Map<String, List<GitDiffType>> getFileToDiffTypeForRevision(String revisionStringOld, String revisionStringNew) throws IOException {
+    public Map<String, GitDiffType> getFileToDiffTypeForRevision(String revisionStringOld, String revisionStringNew) throws IOException {
         return getFileToDiffTypeForRevision(revisionStringOld, revisionStringNew, false);
     }
 
@@ -359,7 +358,7 @@ public class GitWrapper {
      * @param recognizeRenames if true, moved and renamed files will be recognized as {@link GitDiffType#RENAME} (instead of separate DELETE and ADD)
      * @see #getFileToDiffTypeForRevision(String, String)
      */
-    public Map<String, List<GitDiffType>> getFileToDiffTypeForRevision(String revisionStringOld, String revisionStringNew, boolean recognizeRenames) throws IOException {
+    public Map<String, GitDiffType> getFileToDiffTypeForRevision(String revisionStringOld, String revisionStringNew, boolean recognizeRenames) throws IOException {
         if (revisionStringOld == null) {
             throw new IllegalArgumentException("revisionStringOld must not be null");
         }
@@ -370,14 +369,11 @@ public class GitWrapper {
             ObjectId revisionIdOld = _git.getRepository().resolve(revisionStringOld);
             ObjectId revisionIdNew = _git.getRepository().resolve(revisionStringNew);
             List<DiffEntry> diffs = formatter.scan(revisionIdOld, revisionIdNew);
-            return diffs.stream()
-                    .map(diffEntry -> Map.entry(
-                            diffEntry.getChangeType() == DiffEntry.ChangeType.DELETE ? diffEntry.getOldPath() : diffEntry.getNewPath(),
-                            INSTANCE.convert(diffEntry.getChangeType())))
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            entry -> singletonList(entry.getValue()),
-                            GitWrapper::mergeLists));
+            return diffs.stream().collect(toMap(
+                    diffEntry -> diffEntry.getChangeType() == DiffEntry.ChangeType.DELETE ?
+                            diffEntry.getOldPath() :
+                            diffEntry.getNewPath(),
+                    diffEntry -> INSTANCE.convert(diffEntry.getChangeType())));
         }
     }
 
@@ -390,12 +386,5 @@ public class GitWrapper {
         return branches.stream()
                 .filter(branch -> branch.getName().equals("refs/heads/" + branchName))
                 .findFirst();
-    }
-
-    private static List<GitDiffType> mergeLists(List<GitDiffType> l1, List<GitDiffType> l2) {
-        List<GitDiffType> l = new ArrayList<>();
-        l.addAll(l1);
-        l.addAll(l2);
-        return l;
     }
 }

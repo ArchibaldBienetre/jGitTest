@@ -467,13 +467,13 @@ public class GitWrapperTest {
         sut.addAllExceptDeletedFiles();
         String testCommit = sut.commit("committing addFileIfNotDeleted of blah2.txt");
 
-        Map<String, List<GitDiffType>> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
-        Map<String, List<GitDiffType>> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
+        Map<String, GitDiffType> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
+        Map<String, GitDiffType> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
 
         assertFalse(actual.isEmpty());
         assertFalse(actual2.isEmpty());
         assertEquals(actual, actual2);
-        assertEquals(asMap("blah2.txt", singletonList(GitDiffType.ADD)), actual);
+        assertEquals(asMap("blah2.txt", GitDiffType.ADD), actual);
     }
 
     @Test
@@ -487,16 +487,16 @@ public class GitWrapperTest {
         sut.addRemovedFile("blah1.txt");
         String testCommit = sut.commit("committing rename of blah1.txt");
 
-        Map<String, List<GitDiffType>> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit, true);
-        Map<String, List<GitDiffType>> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD", true);
-        Map<String, List<GitDiffType>> actualWithoutRenameRecognition = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
+        Map<String, GitDiffType> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit, true);
+        Map<String, GitDiffType> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD", true);
+        Map<String, GitDiffType> actualWithoutRenameRecognition = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
 
         assertFalse(actual.isEmpty());
         assertFalse(actual2.isEmpty());
         assertEquals(actual, actual2);
-        assertEquals(asMap("blah1-RENAMED.txt", singletonList(GitDiffType.RENAME)), actual);
+        assertEquals(asMap("blah1-RENAMED.txt", GitDiffType.RENAME), actual);
         assertFalse(actualWithoutRenameRecognition.isEmpty());
-        assertEquals(asMap("blah1-RENAMED.txt", singletonList(GitDiffType.ADD), "blah1.txt", singletonList(GitDiffType.DELETE)), actualWithoutRenameRecognition);
+        assertEquals(asMap("blah1-RENAMED.txt", GitDiffType.ADD, "blah1.txt", GitDiffType.DELETE), actualWithoutRenameRecognition);
     }
 
     @Test
@@ -509,13 +509,13 @@ public class GitWrapperTest {
         sut.addRemovedFile("blah1.txt");
         String testCommit = sut.commit("committing deletion of blah1.txt");
 
-        Map<String, List<GitDiffType>> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
-        Map<String, List<GitDiffType>> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
+        Map<String, GitDiffType> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
+        Map<String, GitDiffType> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
 
         assertFalse(actual.isEmpty());
         assertFalse(actual2.isEmpty());
         assertEquals(actual, actual2);
-        assertEquals(asMap("blah1.txt", singletonList(GitDiffType.DELETE)), actual);
+        assertEquals(asMap("blah1.txt", GitDiffType.DELETE), actual);
     }
 
     @Test
@@ -533,13 +533,13 @@ public class GitWrapperTest {
         sut.addRemovedFile("blah1.txt");
         String testCommit = sut.commit("committing move of blah1.txt");
 
-        Map<String, List<GitDiffType>> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
-        Map<String, List<GitDiffType>> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
+        Map<String, GitDiffType> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
+        Map<String, GitDiffType> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
 
         assertFalse(actual.isEmpty());
         assertFalse(actual2.isEmpty());
         assertEquals(actual, actual2);
-        assertEquals(asMap("blah1.txt", singletonList(GitDiffType.DELETE), "directory" + File.separator + "blah1.txt", singletonList(GitDiffType.ADD)), actual);
+        assertEquals(asMap("blah1.txt", GitDiffType.DELETE, "directory" + File.separator + "blah1.txt", GitDiffType.ADD), actual);
     }
 
     @Disabled("Copy detection does not seem to work yet")
@@ -557,13 +557,13 @@ public class GitWrapperTest {
         sut.addAllExceptDeletedFiles();
         String testCommit = sut.commit("committing copy of blah1.txt");
 
-        Map<String, List<GitDiffType>> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
-        Map<String, List<GitDiffType>> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
+        Map<String, GitDiffType> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
+        Map<String, GitDiffType> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
 
         assertFalse(actual.isEmpty());
         assertFalse(actual2.isEmpty());
         assertEquals(actual, actual2);
-        assertEquals(asMap("directory" + File.separator + "blah1.txt", singletonList(GitDiffType.COPY)), actual);
+        assertEquals(asMap("directory" + File.separator + "blah1.txt", GitDiffType.COPY), actual);
     }
 
     @Test
@@ -576,13 +576,13 @@ public class GitWrapperTest {
         sut.addAllExceptDeletedFiles();
         String testCommit = sut.commit("committing modify of blah1-RENAMED.txt");
 
-        Map<String, List<GitDiffType>> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
-        Map<String, List<GitDiffType>> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
+        Map<String, GitDiffType> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
+        Map<String, GitDiffType> actual2 = sut.getFileToDiffTypeForRevision(initialCommit, "HEAD");
 
         assertFalse(actual.isEmpty());
         assertFalse(actual2.isEmpty());
         assertEquals(actual, actual2);
-        assertEquals(asMap("blah1.txt", singletonList(GitDiffType.MODIFY)), actual);
+        assertEquals(asMap("blah1.txt", GitDiffType.MODIFY), actual);
     }
 
     @Test
@@ -605,9 +605,9 @@ public class GitWrapperTest {
         sut.addAllExceptDeletedFiles();
         String deleteCommit = sut.commit("committing deletion of blah2.txt");
 
-        Map<String, List<GitDiffType>> actualSame = sut.getFileToDiffTypeForRevision("HEAD", "HEAD");
-        Map<String, List<GitDiffType>> actualSame2 = sut.getFileToDiffTypeForRevision(renameCommit, renameCommit);
-        Map<String, List<GitDiffType>> actualSame3 = sut.getFileToDiffTypeForRevision(deleteCommit, deleteCommit);
+        Map<String, GitDiffType> actualSame = sut.getFileToDiffTypeForRevision("HEAD", "HEAD");
+        Map<String, GitDiffType> actualSame2 = sut.getFileToDiffTypeForRevision(renameCommit, renameCommit);
+        Map<String, GitDiffType> actualSame3 = sut.getFileToDiffTypeForRevision(deleteCommit, deleteCommit);
 
         assertTrue(actualSame.isEmpty());
         assertTrue(actualSame2.isEmpty());
@@ -664,16 +664,16 @@ public class GitWrapperTest {
         assertTrue(file.delete());
     }
 
-    private Map<String, List<GitDiffType>> asMap(String key, List<GitDiffType> gitDiffTypes) {
-        Map<String, List<GitDiffType>> map = new HashMap<String, List<GitDiffType>>();
-        map.put(key, gitDiffTypes);
+    private Map<String, GitDiffType> asMap(String key, GitDiffType gitDiffType) {
+        Map<String, GitDiffType> map = new HashMap<String, GitDiffType>();
+        map.put(key, gitDiffType);
         return map;
     }
 
-    private Map<String, List<GitDiffType>> asMap(String key1, List<GitDiffType> gitDiffTypes1, String key2, List<GitDiffType> gitDiffTypes2) {
-        Map<String, List<GitDiffType>> map = new HashMap<String, List<GitDiffType>>();
-        map.put(key1, gitDiffTypes1);
-        map.put(key2, gitDiffTypes2);
+    private Map<String, GitDiffType> asMap(String key1, GitDiffType gitDiffType1, String key2, GitDiffType gitDiffType2) {
+        Map<String, GitDiffType> map = new HashMap<String, GitDiffType>();
+        map.put(key1, gitDiffType1);
+        map.put(key2, gitDiffType2);
         return map;
     }
 
