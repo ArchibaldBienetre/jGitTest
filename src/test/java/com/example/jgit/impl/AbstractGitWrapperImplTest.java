@@ -61,7 +61,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
     public void test_that_GitWrapper_can_commit_a_file_locally() throws Exception {
         assertTrue(new File(_tempDir, "blah.txt").createNewFile());
         String logMessage = getClass().getSimpleName() + ": committing a txt file";
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
 
         sut.addFileIfNotDeleted("blah.txt");
         String sha1 = sut.commit(logMessage);
@@ -74,7 +74,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_that_add_works_for_deletions() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         File file = createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
@@ -96,7 +96,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_that_GitWrapper_can_create_branch() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         assertFalse(sut.doesBranchExist(TEST_BRANCH));
         commitSomething(sut, "blah1.txt");
         String sha1Master = sut.getHeadSha1();
@@ -112,7 +112,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_that_GitWrapper_can_switch_branches() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         assertFalse(sut.doesBranchExist(TEST_BRANCH));
         commitSomething(sut, "blah1.txt");
         String sha1Master = sut.getHeadSha1();
@@ -128,7 +128,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_that_GitWrapper_can_delete_branch() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         commitSomething(sut);
         String sha1Master = sut.getHeadSha1();
         sut.createBranchAndCheckout(TEST_BRANCH);
@@ -143,7 +143,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_merge() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         String sha1Master = commitSomething(sut, "blah1.txt");
         sut.createBranchAndCheckout(TEST_BRANCH);
         commitSomething(sut, "blah2.txt");
@@ -161,7 +161,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_that_merge_will_throw_for_nonexistant_branch() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
 
         // TODO use AssertJ instead
         boolean exceptionOccurred = false;
@@ -177,7 +177,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_getHeadSha1() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         String sha1 = commitSomething(sut);
         assertEquals(MASTER, sut.getCurrentBranchName());
         String logSha1 = sut.getLastLogSha1();
@@ -190,7 +190,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_clean() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         File committedFile = createNewFileWithContent("blah1.txt", "1234");
         String logMessage = getClass().getSimpleName() + ": committing a txt file";
         sut.addFileIfNotDeleted("blah1.txt");
@@ -208,7 +208,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_that_add_may_add_whole_directory() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         File file1 = createNewFileWithContent("blah1.txt", "12345");
         File file2 = createNewFileWithContent("blah2.txt", "123456");
         File dir = new File(_tempDir, "directory");
@@ -230,7 +230,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_resetHard() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         String originalContent = "12345";
         File file = createNewFileWithContent("blah1.txt", originalContent);
         sut.addAllExceptDeletedFiles();
@@ -252,7 +252,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_resetHardToRevisionSha1() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         String content1 = "12345";
         String fileName = "blah1.txt";
         File file = createNewFileWithContent(fileName, content1);
@@ -284,7 +284,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_resetHardToBranch() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         String content1 = "12345";
         String fileName = "blah1.txt";
         File file = createNewFileWithContent(fileName, content1);
@@ -318,7 +318,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_getFileContentOfRevision_can_retrieve_content_of_head_revision() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         String expectedContent = "12345";
         String fileName = "blah1.txt";
         createNewFileWithContent(fileName, expectedContent);
@@ -333,7 +333,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_getFileContentOfRevision_can_retrieve_content_of_old_revision() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         String fileName = "blah1.txt";
         String content1 = "12345";
         String content2 = "987612345";
@@ -358,7 +358,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_lsTree_for_root_directory() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         String file1Name = "blah1.txt";
         File file1 = createNewFileWithContent(file1Name, "12345");
         String dirName = "directory";
@@ -396,7 +396,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_lsTree_for_specific_directory() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         File file1 = createNewFileWithContent("blah1.txt", "12345");
         String dirName = "directory";
         File dir = new File(_tempDir, dirName);
@@ -430,7 +430,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_getCommitsBetween() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         String commit1 = commitSomething(sut, "blah1.txt");
         String commit2 = commitSomething(sut, "blah2.txt");
         String commit3 = commitSomething(sut, "blah3.txt");
@@ -459,7 +459,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_getMergeBase() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         String baseCommit = commitSomething(sut, "blah1.txt");
         sut.createBranchAndCheckout(TEST_BRANCH);
         String commitOnBranch = commitSomething(sut, "blah2.txt");
@@ -477,7 +477,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_that_getFileToDiffTypeForRevision_recognizes_ADD() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
@@ -496,7 +496,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_that_getFileToDiffTypeForRevision_recognizes_RENAME() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
@@ -519,7 +519,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_that_getFileToDiffTypeForRevision_recognizes_DELETE() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
@@ -538,7 +538,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_that_getFileToDiffTypeForRevision_recognizes_MOVE() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         File file1 = createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
@@ -563,7 +563,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
     @Disabled("Copy detection does not seem to work yet")
     @Test
     public void test_that_getFileToDiffTypeForRevision_recognizes_COPY() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         File file1 = createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
@@ -586,7 +586,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
 
     @Test
     public void test_that_getFileToDiffTypeForRevision_recognizes_MODIFY() throws Exception {
-        ThrowingGitWrapper sut = createGitWrapper();
+        T sut = createGitWrapper();
         File file1 = createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
@@ -637,11 +637,11 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
         assertEquals(expected, actual);
     }
 
-    private String commitSomething(ThrowingGitWrapper sut) throws Exception {
+    private String commitSomething(T sut) throws Exception {
         return commitSomething(sut, "blah.txt");
     }
 
-    private String commitSomething(ThrowingGitWrapper sut, String fileName) throws Exception {
+    private String commitSomething(T sut, String fileName) throws Exception {
         createNewFile(fileName);
         String logMessage = getClass().getSimpleName() + ": committing a txt file";
         sut.addFileIfNotDeleted(fileName);
