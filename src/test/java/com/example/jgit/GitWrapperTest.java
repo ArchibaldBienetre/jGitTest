@@ -158,6 +158,22 @@ public class GitWrapperTest {
     }
 
     @Test
+    public void test_that_merge_will_throw_for_nonexistant_branch() throws Exception {
+        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+
+        // TODO use AssertJ instead
+        boolean exceptionOccurred = false;
+        try {
+            sut.merge(TEST_BRANCH);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("does not exist"));
+            assertTrue(e.getMessage().contains(TEST_BRANCH));
+            exceptionOccurred = true;
+        }
+        assertTrue(exceptionOccurred);
+    }
+
+    @Test
     public void test_getHeadSha1() throws Exception {
         GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
         String sha1 = commitSomething(sut);

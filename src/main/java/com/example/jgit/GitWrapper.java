@@ -186,7 +186,7 @@ public class GitWrapper {
      */
     public String merge(String branchName) throws GitAPIException {
         Optional<Ref> branchWithMatchingName = findBranchByName(branchName);
-        Ref aCommit = branchWithMatchingName.orElseThrow(() -> new IllegalArgumentException("branch does not exist"));
+        Ref aCommit = branchWithMatchingName.orElseThrow(() -> new IllegalArgumentException("Branch does not exist: " + branchName));
         MergeResult mergeResult = _git.merge()
                 .include(aCommit)
                 .setCommit(true) // no dry run
@@ -341,6 +341,7 @@ public class GitWrapper {
                 return Optional.of(ObjectId.toString(revision));
             }
         }
+        // in case of abandoned commits etc
         return Optional.empty();
     }
 
@@ -359,9 +360,6 @@ public class GitWrapper {
      * @see #getFileToDiffTypeForRevision(String, String)
      */
     public Map<String, GitDiffType> getFileToDiffTypeForRevision(String revisionStringOld, String revisionStringNew, boolean recognizeRenames) throws IOException {
-        if (revisionStringOld == null) {
-            throw new IllegalArgumentException("revisionStringOld must not be null");
-        }
         OutputStream outputStream = new ByteArrayOutputStream();
         try (DiffFormatter formatter = new DiffFormatter(outputStream)) {
             formatter.setRepository(_git.getRepository());
