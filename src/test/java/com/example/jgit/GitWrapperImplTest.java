@@ -8,6 +8,10 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,7 +22,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class GitWrapperTest {
+public class GitWrapperImplTest {
 
     private static final String MASTER = "master";
     private static final String TEST_BRANCH = "TEST_Branch";
@@ -26,7 +30,7 @@ public class GitWrapperTest {
 
     @BeforeEach
     public void setUp() throws IOException {
-        _tempDir = Files.createTempDirectory(GitWrapperTest.class.getSimpleName()).toFile();
+        _tempDir = Files.createTempDirectory(GitWrapperImplTest.class.getSimpleName()).toFile();
     }
 
     @AfterEach
@@ -36,7 +40,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_that_GitWrapper_creates_a_repository_at_given_folder() throws Exception {
-        GitWrapper.forLocalOnlyRepository(_tempDir);
+        createGitWrapper();
 
         File expectedHiddenGitDir = new File(_tempDir, ".git");
         assertTrue(expectedHiddenGitDir.exists(), "should create hidden directory");
@@ -59,7 +63,7 @@ public class GitWrapperTest {
     public void test_that_GitWrapper_can_commit_a_file_locally() throws Exception {
         assertTrue(new File(_tempDir, "blah.txt").createNewFile());
         String logMessage = getClass().getSimpleName() + ": committing a txt file";
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
 
         sut.addFileIfNotDeleted("blah.txt");
         String sha1 = sut.commit(logMessage);
@@ -72,7 +76,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_that_add_works_for_deletions() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         File file = createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
@@ -94,7 +98,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_that_GitWrapper_can_create_branch() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         assertFalse(sut.doesBranchExist(TEST_BRANCH));
         commitSomething(sut, "blah1.txt");
         String sha1Master = sut.getHeadSha1();
@@ -110,7 +114,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_that_GitWrapper_can_switch_branches() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         assertFalse(sut.doesBranchExist(TEST_BRANCH));
         commitSomething(sut, "blah1.txt");
         String sha1Master = sut.getHeadSha1();
@@ -126,7 +130,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_that_GitWrapper_can_delete_branch() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         commitSomething(sut);
         String sha1Master = sut.getHeadSha1();
         sut.createBranchAndCheckout(TEST_BRANCH);
@@ -141,7 +145,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_merge() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         String sha1Master = commitSomething(sut, "blah1.txt");
         sut.createBranchAndCheckout(TEST_BRANCH);
         commitSomething(sut, "blah2.txt");
@@ -159,7 +163,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_that_merge_will_throw_for_nonexistant_branch() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
 
         // TODO use AssertJ instead
         boolean exceptionOccurred = false;
@@ -175,7 +179,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_getHeadSha1() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         String sha1 = commitSomething(sut);
         assertEquals(MASTER, sut.getCurrentBranchName());
         String logSha1 = sut.getLastLogSha1();
@@ -188,7 +192,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_clean() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         File committedFile = createNewFileWithContent("blah1.txt", "1234");
         String logMessage = getClass().getSimpleName() + ": committing a txt file";
         sut.addFileIfNotDeleted("blah1.txt");
@@ -206,7 +210,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_that_add_may_add_whole_directory() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         File file1 = createNewFileWithContent("blah1.txt", "12345");
         File file2 = createNewFileWithContent("blah2.txt", "123456");
         File dir = new File(_tempDir, "directory");
@@ -228,7 +232,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_resetHard() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         String originalContent = "12345";
         File file = createNewFileWithContent("blah1.txt", originalContent);
         sut.addAllExceptDeletedFiles();
@@ -250,7 +254,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_resetHardToRevisionSha1() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         String content1 = "12345";
         String fileName = "blah1.txt";
         File file = createNewFileWithContent(fileName, content1);
@@ -282,7 +286,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_resetHardToBranch() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         String content1 = "12345";
         String fileName = "blah1.txt";
         File file = createNewFileWithContent(fileName, content1);
@@ -316,7 +320,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_getFileContentOfRevision_can_retrieve_content_of_head_revision() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         String expectedContent = "12345";
         String fileName = "blah1.txt";
         createNewFileWithContent(fileName, expectedContent);
@@ -331,7 +335,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_getFileContentOfRevision_can_retrieve_content_of_old_revision() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         String fileName = "blah1.txt";
         String content1 = "12345";
         String content2 = "987612345";
@@ -356,7 +360,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_lsTree_for_root_directory() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         String file1Name = "blah1.txt";
         File file1 = createNewFileWithContent(file1Name, "12345");
         String dirName = "directory";
@@ -394,7 +398,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_lsTree_for_specific_directory() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         File file1 = createNewFileWithContent("blah1.txt", "12345");
         String dirName = "directory";
         File dir = new File(_tempDir, dirName);
@@ -428,7 +432,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_getCommitsBetween() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         String commit1 = commitSomething(sut, "blah1.txt");
         String commit2 = commitSomething(sut, "blah2.txt");
         String commit3 = commitSomething(sut, "blah3.txt");
@@ -457,7 +461,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_getMergeBase() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         String baseCommit = commitSomething(sut, "blah1.txt");
         sut.createBranchAndCheckout(TEST_BRANCH);
         String commitOnBranch = commitSomething(sut, "blah2.txt");
@@ -475,7 +479,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_that_getFileToDiffTypeForRevision_recognizes_ADD() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
@@ -494,7 +498,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_that_getFileToDiffTypeForRevision_recognizes_RENAME() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
@@ -517,7 +521,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_that_getFileToDiffTypeForRevision_recognizes_DELETE() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
@@ -536,7 +540,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_that_getFileToDiffTypeForRevision_recognizes_MOVE() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         File file1 = createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
@@ -561,7 +565,7 @@ public class GitWrapperTest {
     @Disabled("Copy detection does not seem to work yet")
     @Test
     public void test_that_getFileToDiffTypeForRevision_recognizes_COPY() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         File file1 = createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
@@ -584,7 +588,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_that_getFileToDiffTypeForRevision_recognizes_MODIFY() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         File file1 = createNewFileWithContent("blah1.txt", "12345");
         sut.addAllExceptDeletedFiles();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
@@ -603,7 +607,7 @@ public class GitWrapperTest {
 
     @Test
     public void test_getFileToDiffTypeForRevision_for_same_commit() throws Exception {
-        GitWrapper sut = GitWrapper.forLocalOnlyRepository(_tempDir);
+        GitWrapper sut = createGitWrapper();
         createNewFileWithContent("blah1.txt", "12345");
         createNewFileWithContent("blah2.txt", "12345");
         File subDirectory = new File(_tempDir, "directory");
@@ -693,7 +697,21 @@ public class GitWrapperTest {
         return map;
     }
 
-    private static class TestGitWrapper extends GitWrapper {
+    private GitWrapper createGitWrapper() throws IOException, GitAPIException {
+        GitWrapper wrapper = GitWrapperImpl.forLocalOnlyRepository(_tempDir);
+        return (GitWrapper) Proxy.newProxyInstance(getClass().getClassLoader(), new Class<?>[]{GitWrapper.class}, new InvocationHandler() {
+            @Override
+            public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                try {
+                    return method.invoke(wrapper, args);
+                } catch (InvocationTargetException e) {
+                    throw e.getCause();
+                }
+            }
+        });
+    }
+
+    private static class TestGitWrapper extends GitWrapperImpl {
 
         private boolean _initCalled;
 
