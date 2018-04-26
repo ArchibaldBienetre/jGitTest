@@ -1,5 +1,7 @@
-package com.example.jgit;
+package com.example.jgit.impl;
 
+import com.example.jgit.GitDiffType;
+import com.example.jgit.ThrowingGitWrapper;
 import com.google.common.annotations.VisibleForTesting;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeCommand;
@@ -33,19 +35,19 @@ import static java.util.stream.Collectors.toMap;
 /**
  * Encapsulates a GIT repository in the file system using <a href="http://wiki.eclipse.org/JGit/User_Guide">jGit</a>
  */
-public class GitWrapperImpl implements GitWrapper {
+public class ThrowingGitWrapperImpl implements ThrowingGitWrapper {
 
     /**
      * Create or open a GIT repository at the given directory
      */
-    public static GitWrapper forLocalOnlyRepository(File directory) throws IOException, GitAPIException {
-        return new GitWrapperImpl(directory);
+    public static ThrowingGitWrapper createForLocalOnlyRepository(File directory) throws IOException, GitAPIException {
+        return new ThrowingGitWrapperImpl(directory);
     }
 
     private final Git _git;
 
     @VisibleForTesting
-    GitWrapperImpl(File directory) throws IOException, GitAPIException {
+    ThrowingGitWrapperImpl(File directory) throws IOException, GitAPIException {
         _git = localSetup(directory);
     }
 
