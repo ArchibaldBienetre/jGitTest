@@ -19,6 +19,8 @@ public class GitWrapperFactory {
             throw new GitWrapperException(e);
         } catch (GitAPIException e) {
             throw new GitWrapperException(e);
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
