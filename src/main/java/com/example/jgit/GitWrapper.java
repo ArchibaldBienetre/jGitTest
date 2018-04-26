@@ -6,6 +6,8 @@ import org.eclipse.jgit.api.MergeCommand;
 import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
@@ -14,14 +16,20 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.revwalk.filter.SkipRevFilter;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.treewalk.AbstractTreeIterator;
+import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 
+import javax.annotation.Nullable;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.*;
 
+import static com.example.jgit.ChangeTypeMapper.INSTANCE;
 import static com.google.common.collect.Iterables.getOnlyElement;
 
 /**
@@ -63,12 +71,32 @@ public class GitWrapper {
     }
 
     /**
-     * Encapsulates <a href="https://git-scm.com/docs/git-add">git add</a>
+     * Encapsulates <a href="https://git-scm.com/docs/git-add">git add</a> for a specific file pattern.
      *
-     * @param filePattern a concrete file name, or "." for all files - <em>jGit's add does not support globs (like, *.java), as of yet</em>
+     * @param filePattern a concrete file name, or "." for all non-deleted files -
+     *                    <em>jGit's addFileIfNotDeleted does not support globs (like, *.java), as of yet, and will behave weirdly with deleted files</em>
      */
-    public void add(String filePattern) throws GitAPIException {
-        _git.add().addFilepattern(filePattern).call();
+    public void addFileIfNotDeleted(String filePattern) throws GitAPIException {
+        _git.add()
+                .addFilepattern(filePattern)
+                .call();
+    }
+
+    /**
+     * Encapsulates <a href="https://git-scm.com/docs/git-add">git add</a> for the current directory.
+     * <em>jGit's addFileIfNotDeleted behaves weirdly when it comes to deleted files - best use {@link #addRemovedFile()} to delete files!</em>
+     */
+    public void addAllExceptDeletedFiles() throws GitAPIException {
+        addFileIfNotDeleted(".");
+    }
+
+    /**
+     * Encapsulates <a href="https://git-scm.com/docs/git-rm">git rm</a> for the current directory.
+     * <em>jGit's addFileIfNotDeleted behaves weirdly when it comes to deleted files - best use {@link #addRemovedFile()} to delete files!</em>
+     * @param filePattern see {@link #addFileIfNotDeleted(String)}
+     */
+    public void addRemovedFile(String filePattern) throws GitAPIException {
+        _git.rm().addFilepattern(filePattern).call();
     }
 
     /**
@@ -212,7 +240,7 @@ public class GitWrapper {
      * @param filePath       path to file you want to retrieve
      * @return the content of the file if found (first match only)
      */
-    public Optional<String> getFileContentOfRevision(String revisionString, String filePath) throws IOException, GitAPIException {
+    public Optional<String> getFileContentOfRevision(String revisionString, String filePath) throws IOException {
         ObjectId revisionObjectId = _git.getRepository().resolve(revisionString);
         try (RevWalk revWalk = new RevWalk(_git.getRepository());
              TreeWalk treeWalk = new TreeWalk(_git.getRepository())) {
@@ -241,7 +269,7 @@ public class GitWrapper {
      * @param directoryPath  path to directory you want to retrieve
      * @return the content of the file if found (first match only)
      */
-    public List<String> lsTree(String revisionString, String directoryPath) throws IOException, GitAPIException {
+    public List<String> lsTree(String revisionString, String directoryPath) throws IOException {
         ObjectId objectId = _git.getRepository().resolve(revisionString);
         List<String> result = new ArrayList<>();
         TreeFilter filter;
@@ -322,12 +350,61 @@ public class GitWrapper {
 
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-diff">git diff</a>
-     *
+     * <p>
      * Returns a mapping file path > list of {@link GitDiffType}s containing the differences between the given revisions.
+     * <p>If revisionString is null, will diff to the current HEAD.
      */
-    public Map<String, List<GitDiffType>> getFileToDiffTypeForRevision(String revisionStringOld, String revisionStringNew) throws IOException, GitAPIException {
+    public Map<String, List<GitDiffType>> getFileToDiffTypeForRevision(String revisionStringOld, @Nullable String revisionStringNew) throws IOException, GitAPIException {
+        return getFileToDiffTypeForRevision(revisionStringOld, revisionStringNew, false);
+    }
+
+    /**
+     * @see #getFileToDiffTypeForRevision(String, String)
+     * @param recognizeRenames if true, moved and renamed files will be recognized as {@link GitDiffType#RENAME} (instead of separate DELETE and ADD)
+     */
+    public Map<String, List<GitDiffType>> getFileToDiffTypeForRevision(String revisionStringOld, @Nullable String revisionStringNew, boolean recognizeRenames) throws IOException, GitAPIException {
+        if (revisionStringOld == null) {
+            throw new IllegalArgumentException("revisionStringOld must not be null");
+        }
+
         Map<String, List<GitDiffType>> result = new HashMap<>();
+        try (RevWalk revWalkOld = new RevWalk(_git.getRepository());
+             RevWalk revWalkNew = new RevWalk(_git.getRepository())) {
+            AbstractTreeIterator treeParserOld = getCanonicalTreeParser(revWalkOld, revisionStringOld);
+            AbstractTreeIterator treeParserNew = getCanonicalTreeParser(revWalkNew, revisionStringNew);
+            OutputStream outputStream = new ByteArrayOutputStream();
+            try (DiffFormatter formatter = new DiffFormatter(outputStream)) {
+                formatter.setRepository(_git.getRepository());
+                formatter.setDetectRenames(recognizeRenames);
+                ObjectId revisionIdOld = _git.getRepository().resolve(revisionStringOld);
+                ObjectId revisionIdNew = _git.getRepository().resolve(revisionStringNew);
+                List<DiffEntry> diffs = formatter.scan(revisionIdOld, revisionIdNew);
+                diffs.forEach(diffEntry -> addDiffEntryToResult(result, diffEntry));
+            }
+
+        }
         return result;
+    }
+
+    @Nullable
+    private AbstractTreeIterator getCanonicalTreeParser(RevWalk revWalk, @Nullable String revisionString) throws IOException {
+        if (revisionString == null) {
+            return null;
+        }
+        ObjectId revisionId = _git.getRepository().resolve(revisionString);
+        RevCommit parsedCommit = revWalk.lookupCommit(revisionId);
+        revWalk.sort(RevSort.TOPO);
+        revWalk.markStart(parsedCommit);
+        return new CanonicalTreeParser(null, revWalk.getObjectReader(), parsedCommit.getTree());
+    }
+
+    private void addDiffEntryToResult(Map<String, List<GitDiffType>> result, DiffEntry diffEntry) {
+        GitDiffType converted = INSTANCE.convert(diffEntry.getChangeType());
+        String key = converted == GitDiffType.DELETE ? diffEntry.getOldPath() : diffEntry.getNewPath();
+        if (!result.containsKey(key)) {
+            result.put(key, new ArrayList<>());
+        }
+        result.get(key).add(converted);
     }
 
     public boolean doesBranchExist(String branchName) throws GitAPIException {
