@@ -16,7 +16,7 @@ public class GitWrapperFactory {
         try {
             wrapper = ThrowingGitWrapperImpl.createForLocalOnlyRepository(directory);
         } catch (IOException e) {
-            throw new GitWrapperException(e);
+            throw new GitWrapperIOException(e);
         } catch (GitAPIException e) {
             throw new GitWrapperException(e);
         } catch (RuntimeException e) {
@@ -33,7 +33,7 @@ public class GitWrapperFactory {
                     throw e.getCause();
                 }
             } catch (IOException e) {
-                throw new GitWrapperException(e);
+                throw new GitWrapperIOException(e);
             } catch (GitAPIException e) {
                 throw new GitWrapperException(e);
             } catch (RuntimeException e) {
