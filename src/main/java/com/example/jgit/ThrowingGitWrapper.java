@@ -12,23 +12,14 @@ public interface ThrowingGitWrapper {
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-add">git add</a> for a specific file pattern.
      *
-     * @param filePattern a concrete file name, or "." for all non-deleted files -
-     *                    <em>jGit's add does not support globs (like, *.java), as of yet, and will behave weirdly with deleted files</em>
+     * @param filePattern a concrete file name, or "." for all non-deleted files
      */
-    void addFileIfNotDeleted(String filePattern) throws GitAPIException;
+    void add(String filePattern) throws GitAPIException;
 
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-add">git add</a> for the current directory.
-     * <em>jGit's add behaves weirdly when it comes to deleted files - best use {@link #addRemovedFile(String)} ddRemovedFile()} to delete files!</em>
      */
-    void addAllExceptDeletedFiles() throws GitAPIException;
-
-    /**
-     * Encapsulates <a href="https://git-scm.com/docs/git-rm">git rm</a> for the current directory.
-     *
-     * @param filePattern see {@link #addFileIfNotDeleted(String)}
-     */
-    void addRemovedFile(String filePattern) throws GitAPIException;
+    void addAll() throws GitAPIException;
 
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-clean">git clean -dfx</a>

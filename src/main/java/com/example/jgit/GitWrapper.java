@@ -12,13 +12,10 @@ import java.util.Set;
  */
 public interface GitWrapper extends ThrowingGitWrapper {
     @Override
-    void addFileIfNotDeleted(String filePattern);
+    void add(String filePattern);
 
     @Override
-    void addAllExceptDeletedFiles();
-
-    @Override
-    void addRemovedFile(String filePattern);
+    void addAll();
 
     @Override
     Set<String> clean();

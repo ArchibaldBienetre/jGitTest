@@ -63,7 +63,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
         String logMessage = getClass().getSimpleName() + ": committing a txt file";
         T sut = createGitWrapper();
 
-        sut.addFileIfNotDeleted("blah.txt");
+        sut.add("blah.txt");
         String sha1 = sut.commit(logMessage);
 
         assertEquals(sha1, sut.getLastLogSha1());
@@ -76,14 +76,14 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
     public void test_that_add_works_for_deletions() throws Exception {
         T sut = createGitWrapper();
         File file = createNewFileWithContent("blah1.txt", "12345");
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
         sut.clean();
         assertTrue(file.exists());
         deleteFile("blah1.txt");
 
         // this must be done explicitly
-        sut.addRemovedFile("blah1.txt");
+        sut.add("blah1.txt");
         String testCommit = sut.commit("committing deletion of blah1.txt");
         sut.clean();
 
@@ -193,7 +193,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
         T sut = createGitWrapper();
         File committedFile = createNewFileWithContent("blah1.txt", "1234");
         String logMessage = getClass().getSimpleName() + ": committing a txt file";
-        sut.addFileIfNotDeleted("blah1.txt");
+        sut.add("blah1.txt");
         sut.commit(logMessage);
         File unversionedFile = createNewFileWithContent("blah2.txt", "98765");
         assertTrue(committedFile.exists());
@@ -219,7 +219,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
         assertTrue(file2.exists());
         assertTrue(file3.exists());
 
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         sut.commit("commit files");
         sut.clean();
 
@@ -233,7 +233,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
         T sut = createGitWrapper();
         String originalContent = "12345";
         File file = createNewFileWithContent("blah1.txt", originalContent);
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String shaCommit1 = sut.commit("commit files");
         sut.clean();
         assertTrue(file.exists());
@@ -256,13 +256,13 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
         String content1 = "12345";
         String fileName = "blah1.txt";
         File file = createNewFileWithContent(fileName, content1);
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String sha1Commit1 = sut.commit("commit files");
         assertFileContent(file, content1);
 
         String content2 = "98765";
         writeContentToFile(file, content2);
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         sut.commit("commit files 2");
         assertFileContent(file, content2);
 
@@ -288,7 +288,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
         String content1 = "12345";
         String fileName = "blah1.txt";
         File file = createNewFileWithContent(fileName, content1);
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String sha1Commit1 = sut.commit("commit files");
         assertFileContent(file, content1);
         assertEquals(MASTER, sut.getCurrentBranchName());
@@ -296,7 +296,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
         sut.createBranchAndCheckout(TEST_BRANCH);
         String content2 = "98765";
         writeContentToFile(file, content2);
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         sut.commit("commit files 2");
         assertFileContent(file, content2);
         assertEquals(TEST_BRANCH, sut.getCurrentBranchName());
@@ -322,7 +322,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
         String expectedContent = "12345";
         String fileName = "blah1.txt";
         createNewFileWithContent(fileName, expectedContent);
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         sut.commit("commit files");
 
         Optional<String> optionalContent = sut.getFileContentOfRevision("HEAD", fileName);
@@ -338,10 +338,10 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
         String content1 = "12345";
         String content2 = "987612345";
         File file = createNewFileWithContent(fileName, content1);
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String sha1Commit1 = sut.commit("commit files (1)");
         writeContentToFile(file, content2);
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String sha1Commit2 = sut.commit("commit files (2)");
 
         Optional<String> optionalContent1 = sut.getFileContentOfRevision(sha1Commit1, fileName);
@@ -367,12 +367,12 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
         String file2Name = "blah2.txt";
         File file2 = new File(dir, file2Name);
         assertTrue(file2.createNewFile());
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String commit1 = sut.commit("commit files");
         String file3Name = "blah3.txt";
         File file3 = new File(dir, file3Name);
         assertTrue(file3.createNewFile());
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String commit2 = sut.commit("commit another file");
         sut.clean();
         assertTrue(file1.exists());
@@ -404,12 +404,12 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
         String file2Name = "blah2.txt";
         File file2 = new File(dir, file2Name);
         assertTrue(file2.createNewFile());
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String commit1 = sut.commit("commit files");
         String file3Name = "blah3.txt";
         File file3 = new File(dir, file3Name);
         assertTrue(file3.createNewFile());
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String commit2 = sut.commit("commit another file");
         sut.clean();
         assertTrue(file1.exists());
@@ -479,10 +479,10 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
     public void test_that_getFileToDiffTypeForRevision_recognizes_ADD() throws Exception {
         T sut = createGitWrapper();
         createNewFileWithContent("blah1.txt", "12345");
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
         createNewFileWithContent("blah2.txt", "23456");
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String testCommit = sut.commit("committing addFileIfNotDeleted of blah2.txt");
 
         Map<String, GitDiffType> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
@@ -498,11 +498,10 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
     public void test_that_getFileToDiffTypeForRevision_recognizes_RENAME() throws Exception {
         T sut = createGitWrapper();
         createNewFileWithContent("blah1.txt", "12345");
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
         File file1Renamed = renameFile("blah1.txt", "blah1-RENAMED.txt");
-        sut.addAllExceptDeletedFiles();
-        sut.addRemovedFile("blah1.txt");
+        sut.addAll();
         String testCommit = sut.commit("committing rename of blah1.txt");
 
         Map<String, GitDiffType> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit, true);
@@ -521,10 +520,10 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
     public void test_that_getFileToDiffTypeForRevision_recognizes_DELETE() throws Exception {
         T sut = createGitWrapper();
         createNewFileWithContent("blah1.txt", "12345");
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
         deleteFile("blah1.txt");
-        sut.addRemovedFile("blah1.txt");
+        sut.add("blah1.txt");
         String testCommit = sut.commit("committing deletion of blah1.txt");
 
         Map<String, GitDiffType> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
@@ -540,15 +539,14 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
     public void test_that_getFileToDiffTypeForRevision_recognizes_MOVE() throws Exception {
         T sut = createGitWrapper();
         File file1 = createNewFileWithContent("blah1.txt", "12345");
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
         File subDirectory = new File(_tempDir, "directory");
         subDirectory.mkdirs();
         Files.move(file1.toPath(), subDirectory.toPath().resolve("blah1.txt"));
         File newFile3 = new File(subDirectory, "blah1.txt");
         assertTrue(newFile3.exists());
-        sut.addAllExceptDeletedFiles();
-        sut.addRemovedFile("blah1.txt");
+        sut.addAll();
         String testCommit = sut.commit("committing move of blah1.txt");
 
         Map<String, GitDiffType> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
@@ -565,14 +563,14 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
     public void test_that_getFileToDiffTypeForRevision_recognizes_COPY() throws Exception {
         T sut = createGitWrapper();
         File file1 = createNewFileWithContent("blah1.txt", "12345");
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
         File subDirectory = new File(_tempDir, "directory");
         subDirectory.mkdirs();
         Path newFilePath = subDirectory.toPath().resolve("blah1.txt");
         Files.copy(file1.toPath(), newFilePath);
         assertTrue(newFilePath.toFile().exists());
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String testCommit = sut.commit("committing copy of blah1.txt");
 
         Map<String, GitDiffType> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
@@ -588,10 +586,10 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
     public void test_that_getFileToDiffTypeForRevision_recognizes_MODIFY() throws Exception {
         T sut = createGitWrapper();
         File file1 = createNewFileWithContent("blah1.txt", "12345");
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String initialCommit = sut.commit("committing addFileIfNotDeleted of blah1.txt");
         Files.write(file1.toPath(), "MODIFIED CONTENT 9876543210".getBytes(StandardCharsets.UTF_8), StandardOpenOption.WRITE);
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String testCommit = sut.commit("committing modify of blah1-RENAMED.txt");
 
         Map<String, GitDiffType> actual = sut.getFileToDiffTypeForRevision(initialCommit, testCommit);
@@ -613,14 +611,14 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
         File file3 = new File(subDirectory, "blah3.txt");
         assertTrue(file3.createNewFile());
         writeContentToFile(file3, "12345");
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         sut.commit("committing addFileIfNotDeleted of blah1.txt, blah2.txt, blah3.txt");
 
         renameFile("blah1.txt", "blah1-RENAMED.txt");
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String renameCommit = sut.commit("committing rename of blah1.txt");
         deleteFile("blah2.txt");
-        sut.addAllExceptDeletedFiles();
+        sut.addAll();
         String deleteCommit = sut.commit("committing deletion of blah2.txt");
 
         Map<String, GitDiffType> actualSame = sut.getFileToDiffTypeForRevision("HEAD", "HEAD");
@@ -644,7 +642,7 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
     private String commitSomething(T sut, String fileName) throws Exception {
         createNewFile(fileName);
         String logMessage = getClass().getSimpleName() + ": committing a txt file";
-        sut.addFileIfNotDeleted(fileName);
+        sut.add(fileName);
         return sut.commit(logMessage);
     }
 

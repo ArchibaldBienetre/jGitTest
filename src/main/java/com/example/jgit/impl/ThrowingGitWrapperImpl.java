@@ -52,6 +52,7 @@ public class ThrowingGitWrapperImpl implements ThrowingGitWrapper {
     }
 
     private Git localSetup(File directory) throws IOException, GitAPIException {
+        // using thread-safe FileRepository
         FileRepositoryBuilder builder = new FileRepositoryBuilder().setWorkTree(directory);
         File hiddenGitDir = new File(directory, ".git");
         if (!hiddenGitDir.exists()) {
@@ -71,18 +72,16 @@ public class ThrowingGitWrapperImpl implements ThrowingGitWrapper {
     }
 
     @Override
-    public void addFileIfNotDeleted(String filePattern) throws GitAPIException {
+    public void add(String filePattern) throws GitAPIException {
         _git.add().addFilepattern(filePattern).call();
+        // workaround: AddCommand does not consider removed files in the current version, only if updated is set true
+        // (but then added files are ignored, so we do 2 calls here)
+        _git.add().setUpdate(true).addFilepattern(filePattern).call();
     }
 
     @Override
-    public void addAllExceptDeletedFiles() throws GitAPIException {
-        addFileIfNotDeleted(".");
-    }
-
-    @Override
-    public void addRemovedFile(String filePattern) throws GitAPIException {
-        _git.rm().addFilepattern(filePattern).call();
+    public void addAll() throws GitAPIException {
+        add(".");
     }
 
     @Override
