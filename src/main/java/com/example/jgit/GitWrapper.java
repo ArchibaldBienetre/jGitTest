@@ -1,6 +1,7 @@
 package com.example.jgit;
 
 import java.io.File;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -25,6 +26,9 @@ public interface GitWrapper extends ThrowingGitWrapper {
 
     @Override
     String getLastLogEntry();
+
+    @Override
+    Instant getLastCommitTimeRoundedToSeconds();
 
     @Override
     String getLastLogSha1();

@@ -14,6 +14,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 import static java.util.Arrays.asList;
@@ -70,6 +72,23 @@ public abstract class AbstractGitWrapperImplTest<T extends ThrowingGitWrapper> {
         assertEquals(logMessage, sut.getLastLogMessage());
         assertTrue(sut.getLastLogEntry().contains(sha1));
         assertTrue(sut.getLastLogEntry().contains(logMessage));
+    }
+
+    @Test
+    public void test_getLastCommitTimeRoundedToSeconds() throws Exception {
+        File file = createNewFileWithContent("blah1.txt", "12345");
+        T sut = createGitWrapper();
+        sut.addAll();
+        String logMessage = getClass().getSimpleName() + ": committing a txt file";
+        // minus 1 second: account for rounding
+        Instant expectedBefore = Instant.ofEpochMilli(System.currentTimeMillis()).minus(1, ChronoUnit.SECONDS);
+        Instant expectedAfter = expectedBefore.plus(2, ChronoUnit.SECONDS);
+        String sha1 = sut.commit(logMessage);
+
+        Instant actual = sut.getLastCommitTimeRoundedToSeconds();
+
+        assertTrue(expectedBefore.isBefore(actual));
+        assertTrue(expectedAfter.isAfter(actual));
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.example.jgit;
 import org.eclipse.jgit.api.errors.GitAPIException;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,6 +42,13 @@ public interface ThrowingGitWrapper {
      * @return successful commit's SHA-1, followed by the commit's short message
      */
     String getLastLogEntry() throws GitAPIException;
+
+    /**
+     * Encapsulates <a
+     * href="https://git-scm.com/docs/git-log">git-log -n 1 --format=%ci</a>
+     * and returns an Instant for that returned value.
+     */
+    public Instant getLastCommitTimeRoundedToSeconds() throws GitAPIException;
 
     /**
      * Encapsulates <a href="https://git-scm.com/docs/git-log">git-log</a>

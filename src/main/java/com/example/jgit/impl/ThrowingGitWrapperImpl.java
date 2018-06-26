@@ -26,6 +26,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.time.Instant;
 import java.util.*;
 
 import static com.example.jgit.impl.ChangeTypeMapper.INSTANCE;
@@ -103,6 +104,14 @@ public class ThrowingGitWrapperImpl implements ThrowingGitWrapper {
     public String getLastLogEntry() throws GitAPIException {
         RevCommit logEntry = getOnlyElement(_git.log().setMaxCount(1).call());
         return logEntry.getId().toString() + ": " + logEntry.getShortMessage();
+    }
+
+    @Override
+    public Instant getLastCommitTimeRoundedToSeconds() throws GitAPIException {
+        RevCommit logEntry = getOnlyElement(_git.log().setMaxCount(1).call());
+        int secondsOfEpochMillis = logEntry.getCommitTime();
+        long epochMillis = secondsOfEpochMillis * 1000L;
+        return Instant.ofEpochMilli(epochMillis);
     }
 
     @Override
